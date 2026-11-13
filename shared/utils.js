@@ -563,6 +563,7 @@ function renderHeader(activeStep = 'fine', pageTitle = 'Know Your Health') {
       </div>
     </div>
   `;
+  if (window.KYHVault) window.KYHVault.mount();   // Save / Open links (shared/vault.js)
 }
 
 function renderFooter() {

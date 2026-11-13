@@ -229,6 +229,57 @@ def regressions(page, base):
     check('Your pregnancy deserves specialized care' in page.inner_text('body'), 'pregnancy: profile pauses with a care message')
 
 
+def save_and_open(browser, base):
+    print('\nSave and Open (.kyh file)')
+    ctx = browser.new_context(viewport={'width': 390, 'height': 800}, accept_downloads=True)
+    page = ctx.new_page()
+    state = {'profile': {'age': 45, 'sex': 'Female', 'heightCm': 160, 'weightKg': 65, 'symptoms': ['Fatigue']}, 'vitals': {}, 'diagnostics': {}, 'routine': {}}
+    # nothing to save yet: a note, no download
+    page.goto(base + 'profile.html'); page.wait_for_timeout(500)
+    page.locator('.kyh-vault [data-kyh=save]').click()
+    check('Nothing to save yet' in page.inner_text('#kyh-vault-note'), 'save: nothing entered yet says so, no empty file')
+    inject(page, base, state, 'summary.html')
+    check(page.locator('.kyh-vault [data-kyh=save]').count() == 1 and page.locator('.kyh-vault [data-kyh=open]').count() == 1, 'step pages show Open and Save')
+    with page.expect_download() as dl:
+        page.locator('.kyh-vault [data-kyh=save]').click()
+    name = dl.value.suggested_filename
+    check(name.startswith('kyh-') and name.endswith('.kyh'), 'save: one tap downloads a .kyh file', name)
+    check(page.locator('[role=dialog]').count() == 0 and 'Saved as' in page.inner_text('#kyh-vault-note'), 'save: no dialog, a short note says where it went')
+    path = ROOT / 'tools' / '_test.kyh'; dl.value.save_as(str(path))
+    import json
+    doc = json.loads(path.read_text())
+    check(doc['fileType'] == 'kyh-vault' and doc['data']['state']['profile']['age'] == 45, 'file: envelope holds the answers')
+    # a fresh browser (tab closed, other device): open brings everything back
+    page2 = ctx.new_page(); page2.goto(base + 'about.html'); page2.evaluate("() => sessionStorage.clear()")
+    page2.goto(base + 'profile.html'); page2.wait_for_timeout(400)
+    check(state_of(page2) is None or not (state_of(page2) or {}).get('profile', {}).get('age'), 'new session starts empty')
+    page2.once('dialog', lambda d: d.accept())
+    page2.set_input_files('#kyh-vault-file', str(path)) if page2.locator('#kyh-vault-file').count() else None
+    if not page2.locator('#kyh-vault-file').count():
+        page2.evaluate("() => window.KYHVault.pick = window.KYHVault.pick")
+        with page2.expect_file_chooser() as fc:
+            page2.locator('.kyh-vault [data-kyh=open]').click()
+        fc.value.set_files(str(path))
+    page2.wait_for_timeout(900)
+    check((state_of(page2) or {}).get('profile', {}).get('age') == 45, 'open: answers are back from the file', state_of(page2))
+    check('Opened' in (page2.inner_text('body')), 'open: a note confirms')
+    # a wrong file is refused without changing anything
+    bad = ROOT / 'tools' / '_bad.kyh'; bad.write_text('{"hello": 1}')
+    with page2.expect_file_chooser() as fc:
+        page2.locator('.kyh-vault [data-kyh=open]').click()
+    fc.value.set_files(str(bad)); page2.wait_for_timeout(500)
+    check('not a KYH file' in page2.inner_text('#kyh-vault-note') and (state_of(page2) or {}).get('profile', {}).get('age') == 45, 'open: a wrong file is refused, answers untouched')
+    # home page: Open and Save in the nav, and opening there goes to Profile
+    page3 = ctx.new_page(); page3.goto(base + 'index.html')
+    check(page3.locator('.nav-links [data-kyh=open]').is_visible() and page3.locator('.nav-links [data-kyh=save]').is_visible(), 'home: Open and Save are in the nav, also on a phone')
+    with page3.expect_file_chooser() as fc:
+        page3.locator('.nav-links [data-kyh=open]').click()
+    fc.value.set_files(str(path)); page3.wait_for_url(re.compile(r'profile\.html'), timeout=5000)
+    check((state_of(page3) or {}).get('profile', {}).get('age') == 45, 'home: opening a file goes to Profile with the answers loaded')
+    path.unlink(); bad.unlink()
+    ctx.close()
+
+
 def main():
     headed = '--headed' in sys.argv
     problems = []
@@ -244,6 +295,10 @@ def main():
             regressions(page, base)
         except Exception as e:
             check(False, 'regression checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            save_and_open(browser, base)
+        except Exception as e:
+            check(False, 'save and open stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         browser.close()
     print('\nPage health')
     check(not problems, 'no script errors or failed local files on any page', problems[:6])

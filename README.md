@@ -14,6 +14,9 @@ Live: https://vividnova.com/3DHealth/
     python3 tools/stamp.py          # before every commit: cache-busting, meta tags, sitemap.xml
     python3 tools/flow_test.py      # end-to-end smoke test (needs Playwright + Chromium)
 
+## Save and Open
+Every page has **Open** and **Save** (home page: in the top bar). Save downloads one `.kyh` file with the person's answers and Doctor Brief notes (plain JSON, envelope `{app, fileType:'kyh-vault', version, savedAt, data:{state, briefHistory}}`); Open puts them back, on any device or after the tab was closed. One tap, no dialog, nothing nags while someone works. The code is `shared/vault.js`; the file is checked and cleaned with `sanitizeIncomingState` before use. It is the same idea as KYF's Save Data and KYT's Save.
+
 ## Structure
 - `*.html` — one page per step (index, profile, symptoms, routine, diagnostics, diet, summary, next steps, about)
 - `kyf_teaser.html` — teaser launch page (video, then forwards to the home page)
