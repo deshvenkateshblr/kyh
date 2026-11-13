@@ -294,6 +294,28 @@ def save_and_open(browser, base):
     ctx.close()
 
 
+def hidden_unit_does_not_block(browser, base):
+    print('\nProfile: a hidden unit box must not block Continue')
+    page = browser.new_page(viewport={'width': 1000, 'height': 900})
+    page.goto(base + 'profile.html')
+    for t in ('height-unit-toggle', 'weight-unit-toggle', 'waist-unit-toggle'):
+        page.locator(f'#{t} [data-unit]:not(.active)').first.click()
+    # old values left in the boxes that are now hidden, outside their limits
+    page.evaluate("() => { document.getElementById('f-waist-cm').disabled = false; document.getElementById('f-waist-cm').value = '3'; document.getElementById('f-height-cm').value = '5'; document.getElementById('f-weight-kg').value = '1'; }")
+    page.select_option('#f-sex', 'Female'); page.fill('#f-age', '40')
+    page.fill('#f-height-ft', '5'); page.fill('#f-height-in', '4'); page.fill('#f-weight-lb', '150'); page.fill('#f-waist-in', '34')
+    page.select_option('#f-smoking', 'Never'); page.select_option('#f-alcohol', 'Occasional')
+    page.select_option('#f-repro-status', 'Regular cycle'); page.select_option('#f-diet-type', 'Vegetarian'); page.select_option('#f-cuisine-type', index=1)
+    page.evaluate("() => { for (const id of ['f-waist-cm','f-height-cm','f-weight-kg']) { document.getElementById(id).value = id === 'f-waist-cm' ? '3' : (id === 'f-height-cm' ? '5' : '1'); } }")
+    page.locator('#profile-form button[type=submit]').click()
+    try:
+        page.wait_for_url(re.compile(r'symptoms\.html'), timeout=5000); ok = True
+    except Exception:
+        ok = False
+    check(ok, 'profile: with inches and lb chosen, Continue goes on even if a hidden cm or kg box holds an old value', page.inner_text('#validation-msg') if not ok else '')
+    page.close()
+
+
 def main():
     headed = '--headed' in sys.argv
     problems = []
@@ -313,6 +335,10 @@ def main():
             save_and_open(browser, base)
         except Exception as e:
             check(False, 'save and open stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            hidden_unit_does_not_block(browser, base)
+        except Exception as e:
+            check(False, 'hidden unit check stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         browser.close()
     print('\nPage health')
     check(not problems, 'no script errors or failed local files on any page', problems[:6])
