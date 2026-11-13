@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="description" content="Describe a typical day: sleep, work, movement and exercise. KYH estimates your daily energy use as you go. Your answers stay in your browser.">
       <title>Your daily routine — KYH</title>
-     <link rel="stylesheet" href="shared/styles.css?v=20261113-cf16684">
+     <link rel="stylesheet" href="shared/styles.css?v=20261113-9dedb40">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-cf16684">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-9dedb40">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +16,7 @@
 <meta property="og:title" content="Your daily routine — KYH">
 <meta property="og:description" content="Describe a typical day: sleep, work, movement and exercise. KYH estimates your daily energy use as you go. Your answers stay in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/routine.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-cf16684">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-9dedb40">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,9 +33,9 @@
 
     <footer id="app-footer"></footer>
 
-    <script src="shared/data.activities.js?v=20261113-cf16684"></script>
-    <script src="shared/utils.js?v=20261113-cf16684"></script>
-<script src="shared/vault.js?v=20261113-cf16684"></script>
+    <script src="shared/data.activities.js?v=20261113-9dedb40"></script>
+    <script src="shared/utils.js?v=20261113-9dedb40"></script>
+<script src="shared/vault.js?v=20261113-9dedb40"></script>
     <script>
       const state = loadState();
       const profile = state.profile;
@@ -197,11 +197,6 @@
         document.getElementById('rt-sum').innerHTML = `
           <div class="stat-card hero"><div class="k">Est. Daily Energy Use</div><div class="v">~${L.burn.toLocaleString()}</div><div class="u">kcal / day</div></div>
           <div class="stat-card"><div class="k">Hours Described</div><div class="v"${over ? ' style="color:var(--rose)"' : ''}>${L.logged.toFixed(1)}</div><div class="u">out of 24 hrs</div></div>`;
-        const t = document.getElementById('rt-tally');
-        if (t) {
-          t.textContent = `${L.logged.toFixed(1)} / 24 hrs described`;
-          t.classList.toggle('over', over);
-        }
         const nd = document.getElementById('rt-nudge');
         if (nd) nd.innerHTML = L.logged > 0 ? nudgeHtml(L) : '';
         document.getElementById('rt-over').textContent = over ? `That adds up to more than 24 hours. Shorten something so the day fits.` : '';
@@ -251,7 +246,6 @@
             <p id="rt-nudge" style="margin:10px 0 0;" aria-live="polite"></p></div>
 
           <div class="validation-msg alert-banner" id="time-msg" aria-live="polite"></div>
-          <div class="rt-tally-row"><span id="rt-tally"></span></div>
           <div class="page-footer-nav">
             <a href="#" id="back-btn" class="btn secondary">&larr; Back</a>
             <button type="button" class="btn" id="continue-btn">Get Movement Plan &rarr;</button>

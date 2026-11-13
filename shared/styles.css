@@ -1537,15 +1537,24 @@ footer {
 .rt-q .radio-pair input:focus-visible + label { outline:2px solid var(--teal); outline-offset:1px; }
 .browse-chip { min-height:40px; }
 .rt-hint { font-size:13px; color:var(--muted); line-height:1.55; margin:6px 0 4px; }
-.rt-tally-row { position:sticky; bottom:14px; z-index:5; text-align:right; margin:4px 0 10px; pointer-events:none; }
 .rt-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
 .rt-table th, .rt-table td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
 .rt-table th:nth-child(n+2), .rt-table td:nth-child(n+2) { text-align:right; font-family:var(--mono); }
 .rt-table th { font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:400; }
 .rt-table .tot td { font-weight:700; border-bottom:0; }
-#rt-tally { display:inline-block; border:2px solid var(--teal); border-radius:40px; padding:7px 16px; font-family:var(--mono);
-  font-size:12.5px; font-weight:700; color:var(--teal); background:var(--paper); }
-#rt-tally.over { color:var(--rose); border-color:var(--rose); }
+/* The energy and hours strip stays at the top of the screen while the day is described, so the effect of each choice shows at once. */
+#rt-sum { position:sticky; top:0; z-index:20; margin:0 0 12px; box-shadow:0 8px 16px -10px rgba(0,0,0,.35); }
+#rt-sum .stat-card { padding:11px 16px; }
+#rt-sum .stat-card.hero .v { font-size:28px; line-height:1.1; margin-top:2px; }
+#rt-sum .stat-card .v { line-height:1.1; margin-top:2px; }
+@media (max-width:768px) {
+  #rt-sum { grid-template-columns:1.25fr 1fr; }
+  #rt-sum .stat-card { padding:8px 12px; }
+  #rt-sum .stat-card .k { font-size:9px; letter-spacing:.06em; }
+  #rt-sum .stat-card.hero .v { font-size:24px; }
+  #rt-sum .stat-card .v { font-size:20px; }
+  #rt-sum .stat-card .u { font-size:10px; }
+}
 #rt-secs .browse-grid { margin-bottom: 14px; }
 #rt-secs .cat-title { margin-top: 26px; }
 
