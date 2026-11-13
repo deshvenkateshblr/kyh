@@ -29,8 +29,8 @@ const NO_SYMPTOM_FALLBACK = {
 
 /* ---------- Cross-page state ----------
    Default: sessionStorage only (cleared when the tab/window closes).
-   Optional: localStorage when the user opts in on Profile
-   ("Remember my progress on this device").
+   Nothing is kept after the tab closes unless the person saves a .kyh file (Save, shared/vault.js).
+   An older "remember on this device" copy in localStorage is read once, then removed (purgeLegacyRemember).
    State also travels as a base64 payload between pages as a backup
    (for file:// multi-page testing, or when storage is blocked).
 
@@ -79,15 +79,14 @@ function isRememberEnabled() {
   }
 }
 
-function setRememberEnabled(on) {
+/* The "Remember my progress" option is gone (Save/Open replaced it). Remove any copy an earlier visit left on this device. */
+function purgeLegacyRemember() {
   try {
-    if (on) {
-      localStorage.setItem(REMEMBER_KEY, '1');
-    } else {
-      localStorage.removeItem(REMEMBER_KEY);
-      localStorage.removeItem(STATE_KEY);
-      localStorage.removeItem('kyh_brief_history_v1');
-    }
+    const h = localStorage.getItem('kyh_brief_history_v1');                       // keep Doctor Brief notes for this tab
+    if (h != null && sessionStorage.getItem('kyh_brief_history_v1') == null) sessionStorage.setItem('kyh_brief_history_v1', h);
+  } catch (e) { /* ignore */ }
+  try {
+    localStorage.removeItem(REMEMBER_KEY); localStorage.removeItem(STATE_KEY); localStorage.removeItem('kyh_brief_history_v1');
   } catch (e) { /* ignore */ }
 }
 
@@ -178,6 +177,7 @@ function loadState() {
     location.replace('profile.html');
   }
   persistState(state);
+  purgeLegacyRemember();       // anything remembered earlier is now in this tab's session; the file is the way to keep it
   scrubStateFromUrl();
   return state;
 }
@@ -185,11 +185,6 @@ function loadState() {
 function persistState(state) {
   try {
     sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
-  } catch (e) { /* ignore */ }
-  try {
-    if (isRememberEnabled()) {
-      localStorage.setItem(STATE_KEY, JSON.stringify(state));
-    }
   } catch (e) { /* ignore */ }
 }
 

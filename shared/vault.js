@@ -5,14 +5,11 @@
    It stays on your device: nothing is sent anywhere. Keep it private, it is your health information. */
 (function () {
   'use strict';
-  var STATE_KEY = 'chart_state_v1', HISTORY_KEY = 'kyh_brief_history_v1', REMEMBER_KEY = 'kyh_remember_v1', NOTE_KEY = 'kyh_opened_note';
+  var STATE_KEY = 'chart_state_v1', HISTORY_KEY = 'kyh_brief_history_v1', NOTE_KEY = 'kyh_opened_note';
   var FILE_TYPE = 'kyh-vault', EXT = '.kyh';
 
   function readStore(key) {
-    var v = null;
-    try { v = sessionStorage.getItem(key); } catch (e) { /* blocked */ }
-    if (v == null) { try { if (localStorage.getItem(REMEMBER_KEY) === '1') v = localStorage.getItem(key); } catch (e) { /* blocked */ } }
-    return v;
+    try { return sessionStorage.getItem(key); } catch (e) { return null; }
   }
   function currentState() {
     try { var s = JSON.parse(readStore(STATE_KEY) || 'null'); return s && typeof s === 'object' && !Array.isArray(s) ? s : null; } catch (e) { return null; }
@@ -79,7 +76,7 @@
       window.persistState(state);
       var h = typeof r.history === 'string' && r.history.length < 200000 ? r.history : null;
       try {
-        if (h) { sessionStorage.setItem(HISTORY_KEY, h); if (localStorage.getItem(REMEMBER_KEY) === '1') localStorage.setItem(HISTORY_KEY, h); }
+        if (h) sessionStorage.setItem(HISTORY_KEY, h);
         sessionStorage.setItem(NOTE_KEY, file.name || 'file');
       } catch (e) { /* ignore */ }
       var onHome = /(^|\/)(index\.html)?$/.test(location.pathname);
@@ -98,10 +95,11 @@
     inp.click();
   }
 
-  var CSS = '.kyh-vault{display:flex;justify-content:flex-end;gap:18px;margin-top:8px;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase}' +
+  var CSS = '.masthead{position:relative}.kyh-vault{position:absolute;top:50%;transform:translateY(-50%);right:clamp(16px,4vw,48px);display:flex;gap:14px;margin:0;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase}' +
     '.kyh-vault button,.nav-links button[data-kyh]{background:none;border:0;padding:8px 2px;min-height:36px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer}' +
     '.kyh-vault button:hover,.nav-links button[data-kyh]:hover{color:#1f7a6c;text-decoration:underline}' +
-    '@media(max-width:768px){.kyh-vault{justify-content:center}}';
+    '@media(min-width:769px){.masthead{padding-right:calc(clamp(16px,4vw,48px) + 118px)}}' +
+    '@media(max-width:768px){.kyh-vault{top:12px;transform:none;right:10px;gap:10px}}';
   function wire(root) {
     root.querySelectorAll('[data-kyh="save"]').forEach(function (b) { if (!b.dataset.bound) { b.dataset.bound = '1'; b.addEventListener('click', save); } });
     root.querySelectorAll('[data-kyh="open"]').forEach(function (b) { if (!b.dataset.bound) { b.dataset.bound = '1'; b.addEventListener('click', pick); } });

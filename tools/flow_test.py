@@ -277,6 +277,20 @@ def save_and_open(browser, base):
     fc.value.set_files(str(path)); page3.wait_for_url(re.compile(r'profile\.html'), timeout=5000)
     check((state_of(page3) or {}).get('profile', {}).get('age') == 45, 'home: opening a file goes to Profile with the answers loaded')
     path.unlink(); bad.unlink()
+    # the old "Remember my progress" option is gone, and an earlier remembered copy is carried into the tab once, then removed
+    page4 = ctx.new_page(); page4.goto(base + 'about.html')
+    page4.evaluate("([k, s]) => { sessionStorage.clear(); localStorage.setItem('kyh_remember_v1', '1'); localStorage.setItem(k, JSON.stringify(s)); localStorage.setItem('kyh_brief_history_v1', 'old note'); }", [STATE_KEY, state])
+    page4.goto(base + 'profile.html'); page4.wait_for_timeout(500)
+    check(page4.locator('#f-remember').count() == 0 and 'Remember my progress' not in page4.inner_text('body'), 'profile: no Remember my progress option')
+    check((state_of(page4) or {}).get('profile', {}).get('age') == 45, 'an earlier remembered copy still loads once')
+    check(page4.evaluate("() => [localStorage.getItem('kyh_remember_v1'), localStorage.getItem('chart_state_v1'), localStorage.getItem('kyh_brief_history_v1')]") == [None, None, None], 'then nothing health-related stays in localStorage')
+    check(page4.evaluate("() => sessionStorage.getItem('kyh_brief_history_v1')") == 'old note', 'Doctor Brief notes carried over too')
+    # Open and Save sit inside the header, not on a line of their own
+    box = page.evaluate("() => { const m = document.querySelector('.masthead').getBoundingClientRect(), v = document.querySelector('.kyh-vault').getBoundingClientRect(); return [v.top >= m.top, v.bottom <= m.bottom, v.right <= m.right]; }")
+    h_with = page.evaluate("() => document.querySelector('.masthead').offsetHeight")
+    page.evaluate("() => document.querySelector('.kyh-vault').style.display = 'none'")
+    h_without = page.evaluate("() => document.querySelector('.masthead').offsetHeight")
+    check(all(box) and h_with == h_without, 'Open and Save sit inside the header and add no height', [box, h_with, h_without])
     ctx.close()
 
 

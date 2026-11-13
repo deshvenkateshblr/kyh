@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <title>Start your KYH health self-check — About you</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261113-7d2d70b">
+<link rel="stylesheet" href="shared/styles.css?v=20261113-2cb57ba">
 <style>
 .scope-panel { text-align:center; padding:40px 20px; max-width:700px; margin:0 auto; }
 #scope-title:focus { outline: none; }
@@ -21,7 +21,7 @@
 <!-- share:start -->
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://vividnova.com/3DHealth/profile.html">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-7d2d70b">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-2cb57ba">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -29,7 +29,7 @@
 <meta property="og:title" content="Start your KYH health self-check — About you">
 <meta property="og:description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/profile.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-7d2d70b">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-2cb57ba">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -98,20 +98,6 @@
 
 <main id="profile-main">
   <form id="profile-form">
-
-    <div class="note-block teal" style="margin-bottom:22px;">
-      <span class="k">Session memory</span>
-      <div class="check-field" style="margin-top:8px;">
-        <input type="checkbox" id="f-remember">
-        <label for="f-remember">
-          Remember my progress on this device until I clear it
-          <span style="display:block;font-size:12px;color:var(--ink-soft);font-weight:400;margin-top:2px;">
-            Helps if the tab closes (for example after print). Data stays only in this browser &mdash; still not sent to any server.
-            Uncheck anytime to clear the saved copy.
-          </span>
-        </label>
-      </div>
-    </div>
 
     <div class="field-row" style="margin-bottom:22px;">
       <div class="field">
@@ -297,8 +283,8 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261113-7d2d70b"></script>
-<script src="shared/vault.js?v=20261113-7d2d70b"></script>
+<script src="shared/utils.js?v=20261113-2cb57ba"></script>
+<script src="shared/vault.js?v=20261113-2cb57ba"></script>
 <script>
 renderHeader('fine', 'KYH - Profile');
 renderFooter();
@@ -306,17 +292,6 @@ renderFooter();
 const state = loadState();
 const p = state.profile || {};
 
-/* ---- remember preference ---- */
-const rememberEl = document.getElementById('f-remember');
-if (rememberEl) {
-  rememberEl.checked = isRememberEnabled();
-  rememberEl.addEventListener('change', () => {
-    setRememberEnabled(rememberEl.checked);
-    if (rememberEl.checked) {
-      persistState(loadState());
-    }
-  });
-}
 
 /* ---- restore prior values if present ---- */
 if (p.sex) document.getElementById('f-sex').value = p.sex;
@@ -407,7 +382,6 @@ function clearSavedProfile() {
     const st = JSON.parse(sessionStorage.getItem(STATE_KEY) || '{}');
     if (st.profile) { delete st.profile; sessionStorage.setItem(STATE_KEY, JSON.stringify(st)); }
   } catch (e) {}
-  try { if (isRememberEnabled()) { const st = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); if (st.profile) { delete st.profile; localStorage.setItem(STATE_KEY, JSON.stringify(st)); } } } catch (e) {}
 }
 document.getElementById('f-age').addEventListener('change', checkAgeScope);
 document.getElementById('f-repro-status').addEventListener('change', checkPregnancyScope);
@@ -656,9 +630,6 @@ document.getElementById('profile-form').addEventListener('submit', (e) => {
   }
 
   msg.textContent = '';
-
-  // Apply remember preference before saving this step
-  setRememberEnabled(document.getElementById('f-remember').checked);
 
   const bmi = computeBMI(weightKg, heightCm);
   const whtr = computeWHtR(waistCm, heightCm);

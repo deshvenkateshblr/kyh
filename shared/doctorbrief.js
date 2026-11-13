@@ -52,26 +52,20 @@
 
   /* ---------- Free-text history (kept OUT of the shared app state) ----------
      Stored under its own key so it never rides along in the ?d= URL payload
-     that the other pages use, and is removed with the rest of the saved data
-     when "remember my progress" is switched off. */
+     that the other pages use. It lives in the tab only, and travels in the .kyh file (Save). */
   const HISTORY_KEY = 'kyh_brief_history_v1';
   const HISTORY_MAX = 600;
 
-  function remembered() {
-    try { return typeof isRememberEnabled === 'function' && isRememberEnabled(); } catch (e) { return false; }
-  }
   function getHistory() {
     try {
-      let v = sessionStorage.getItem(HISTORY_KEY);
-      if (v == null && remembered()) v = localStorage.getItem(HISTORY_KEY);
-      return v || '';
+      return sessionStorage.getItem(HISTORY_KEY) || '';
     } catch (e) { return ''; }
   }
   function setHistory(text) {
     const v = String(text || '').slice(0, HISTORY_MAX);
     try {
-      if (v.trim()) { sessionStorage.setItem(HISTORY_KEY, v); if (remembered()) localStorage.setItem(HISTORY_KEY, v); }
-      else { sessionStorage.removeItem(HISTORY_KEY); localStorage.removeItem(HISTORY_KEY); }
+      if (v.trim()) sessionStorage.setItem(HISTORY_KEY, v);
+      else sessionStorage.removeItem(HISTORY_KEY);
     } catch (e) { /* storage unavailable */ }
   }
 
