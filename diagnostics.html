@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-9efa0c3">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-2529c14">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -17,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-9efa0c3">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-2529c14">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-9efa0c3">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-2529c14">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-9efa0c3"></script>
-<script src="shared/utils.js?v=20261121-9efa0c3"></script>
-<script src="shared/data.symptoms.js?v=20261121-9efa0c3"></script>
-<script src="shared/vault.js?v=20261121-9efa0c3"></script>
+<script src="shared/data.diagnostics.js?v=20261121-2529c14"></script>
+<script src="shared/utils.js?v=20261121-2529c14"></script>
+<script src="shared/data.symptoms.js?v=20261121-2529c14"></script>
+<script src="shared/vault.js?v=20261121-2529c14"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -591,9 +591,10 @@ function renderRefinePanel() {
       </div>
       <div class="refine-step" data-step="1" hidden>
         <div class="refine-step-h"><b>2 &middot; Symptoms</b></div>
-        <p class="refine-why">Anything bothering you now pulls in the tests that look into it. Skip it if nothing does.</p>
+        <p class="refine-why">Anything bothering you now pulls in the tests that look into it. Search, or open the full list and pick from it. Skip it if nothing does.</p>
         <input type="text" id="rf-sym-search" class="field" style="width:100%;box-sizing:border-box;padding:10px 12px;font-size:15px;" placeholder="Search symptoms&hellip;" autocomplete="off">
         <div id="rf-sym-suggest" class="browse-grid" style="margin-top:10px;"></div>
+        <button type="button" class="refine-back" id="rf-sym-more" style="margin-top:8px;font-size:13.5px;color:var(--teal);"></button>
         <div class="chips-row" id="rf-sym-chips" style="margin-top:10px;"></div>
         <p class="refine-why" style="margin-top:6px;"><a href="symptoms.html">Browse every symptom and add known vitals &rarr;</a></p>
       </div>
@@ -638,6 +639,7 @@ function renderRefinePanel() {
     if (state.diet) state.diet = Object.assign({}, state.diet, { type: e.target.value });
     commitRefine(e.target.value ? `${e.target.value} diet added.` : 'Diet cleared.');
   });
+  document.getElementById('rf-sym-more').addEventListener('click', () => { symShowAll = !symShowAll; renderSymUi(); });
   document.getElementById('rf-sym-search').addEventListener('input', e => { symQuery = e.target.value; renderSymUi(); });
   document.getElementById('rf-sym-suggest').addEventListener('click', e => {
     const b = e.target.closest('.browse-chip'); if (b) toggleSym(b.dataset.s);
@@ -666,14 +668,32 @@ function showStep(n) {
   document.getElementById('refine-next').innerHTML = refineStep === 2 ? 'Done' : (filled ? 'Next &rarr;' : 'Skip &rarr;');
 }
 
+let symShowAll = false;
 function renderSymUi() {
   const chosen = new Set(profile.symptoms || []);
   const q = symQuery.trim().toLowerCase();
-  const pool = q ? SYM_ALL.filter(x => x.toLowerCase().includes(q)) : SYM_COMMON;
-  const shown = pool.slice(0, 12);
-  document.getElementById('rf-sym-suggest').innerHTML = shown.length
-    ? shown.map(x => `<button type="button" class="browse-chip${chosen.has(x) ? ' selected' : ''}" data-s="${esc(x)}">${esc(x)}</button>`).join('')
-    : `<span class="refine-why">No symptom matches that.</span>`;
+  const chip = x => `<button type="button" class="browse-chip${chosen.has(x) ? ' selected' : ''}" data-s="${esc(x)}">${esc(x)}</button>`;
+  const box = document.getElementById('rf-sym-suggest'), more = document.getElementById('rf-sym-more');
+  if (q) {                                   // searching: every match, whatever the view
+    const hits = SYM_ALL.filter(x => x.toLowerCase().includes(q)).slice(0, 40);
+    box.className = 'browse-grid'; box.style.maxHeight = '';
+    box.innerHTML = hits.length ? hits.map(chip).join('') : `<span class="refine-why">No symptom matches that. Try a shorter word.</span>`;
+    more.hidden = true;
+  } else if (symShowAll) {                   // the whole list, grouped, scrolls inside the panel
+    const seen = new Set();
+    const groups = SYM_CATS.map(c => ({ name: c.name, items: c.items.filter(x => SYM_ALL.includes(x)) }));
+    groups.forEach(g => g.items.forEach(x => seen.add(x)));
+    const rest = SYM_ALL.filter(x => !seen.has(x));
+    if (rest.length) groups.push({ name: 'Other', items: rest });
+    box.className = ''; box.style.maxHeight = '320px'; box.style.overflowY = 'auto';
+    box.innerHTML = groups.filter(g => g.items.length).map(g =>
+      `<div class="cat-title" style="margin:12px 0 6px;">${esc(g.name)}</div><div class="browse-grid">${g.items.map(chip).join('')}</div>`).join('');
+    more.hidden = false; more.innerHTML = 'Show fewer &uarr;';
+  } else {
+    box.className = 'browse-grid'; box.style.maxHeight = ''; box.style.overflowY = '';
+    box.innerHTML = SYM_COMMON.slice(0, 12).map(chip).join('');
+    more.hidden = false; more.innerHTML = `Show all ${SYM_ALL.length} symptoms &darr;`;
+  }
   document.getElementById('rf-sym-chips').innerHTML = [...chosen]
     .map(x => `<span class="chip">${esc(x)}<button type="button" class="chip-x" data-s="${esc(x)}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join('');
 }
@@ -751,6 +771,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-9efa0c3"></script>
+<script src="shared/statusbar.js?v=20261121-2529c14"></script>
 </body>
 </html>
