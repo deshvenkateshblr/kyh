@@ -646,6 +646,35 @@ function estimateTdeeFromActivities(activities, weightKg, defs, profile) {
   return Math.round(rest > 0 ? rest / 24 * metHours : flatKcal);
 }
 
+/* Quick day-type estimate (the default on the Routine page): daily energy = resting energy x an activity
+   factor chosen from two answers, a usual-day type and how often the person exercises on purpose.
+   The factors sit inside the FAO/WHO/UNU "Human energy requirements" (2001/2004) activity-level bands
+   (sedentary or light 1.40-1.69, moderately active 1.70-1.99, vigorous 2.00-2.40). The exact picks
+   within each band are an editorial choice, NEEDS PHYSICIAN REVIEW, like the thresholds above.
+   The range is the factor +/- 0.10: an honest width for a two-question estimate. */
+const DAY_TYPES = [
+  { key: 'sit',   title: 'Mostly sitting',               eg: 'Desk job, studying, driving, working from home', pal: 1.40 },
+  { key: 'light', title: 'Light on my feet',             eg: 'Teaching, shop or counter work, home with errands and chores', pal: 1.55 },
+  { key: 'feet',  title: 'On my feet most of the day',   eg: 'Nursing, kitchen work, minding children, housework all day', pal: 1.70 },
+  { key: 'hard',  title: 'Physically hard work',         eg: 'Construction, farm labour, loading, delivery on foot or by bicycle', pal: 1.90 }
+];
+const EXERCISE_LEVELS = [
+  { key: 'none', title: 'Rarely or never',      add: 0 },
+  { key: '1-2',  title: '1 to 2 days a week',   add: 0.05 },
+  { key: '3-4',  title: '3 to 4 days a week',   add: 0.10 },
+  { key: '5+',   title: '5 or more days a week', add: 0.15 }
+];
+function estimateTdeeFromDayType(dayKey, exKey, profile) {
+  const day = DAY_TYPES.find(d => d.key === dayKey), ex = EXERCISE_LEVELS.find(e => e.key === exKey);
+  if (!day || !ex) return null;
+  const assumed = typeof bodySizeAssumed === 'function' ? bodySizeAssumed(profile) : false;
+  const p = Object.assign({}, profile, { weightKg: Number(profile && profile.weightKg) || 70, heightCm: Number(profile && profile.heightCm) || 168 });
+  const rest = restingKcalPerDay(p);
+  if (!rest) return null;
+  const pal = day.pal + ex.add;
+  return { kcal: Math.round(rest * pal), low: Math.round(rest * (pal - 0.10)), high: Math.round(rest * (pal + 0.10)), pal, bodyAssumed: assumed };
+}
+
 /* Weekly activities (gym, sports) are NOT part of the daily figure. This gives an indicative
    burn for them on their own, priced the same way as the daily total (MET x resting/24 x hours,
    or the flat rate when the profile is incomplete). It is the energy used while doing the activity

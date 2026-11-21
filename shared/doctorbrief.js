@@ -197,7 +197,10 @@
     const burn = assumedWeek ? 0 : (Number(routine.estimatedCalories) || 0);
     let band = null;
     if (burn && global.KYHInsights && global.KYHInsights.activityBandFromBurn) band = global.KYHInsights.activityBandFromBurn(burn);
-    return { items, burn, band, dayParts, activeList, weekTotal, habits, hasActivities: acts.length > 0, assumedWeek, bodyAssumed: bodySizeAssumed(state.profile) };
+    const dayDef = (typeof DAY_TYPES !== 'undefined' ? DAY_TYPES : []).find(d => d.key === routine.dayType);
+    const exDef = (typeof EXERCISE_LEVELS !== 'undefined' ? EXERCISE_LEVELS : []).find(e => e.key === routine.exerciseDays);
+    const quick = !assumedWeek && !!dayDef ? { day: dayDef.title, exercise: exDef ? exDef.title : '' } : null;
+    return { items, burn, band, dayParts, activeList, weekTotal, habits, hasActivities: acts.length > 0, assumedWeek, quick, bodyAssumed: bodySizeAssumed(state.profile) };
   }
 
   const MEET_LABEL = { yes: 'Meeting', partial: 'Partly', no: 'Not meeting' };
@@ -356,7 +359,9 @@
       ? '<div class="db-stat"><div class="db-stat-ic">' + ICON.bolt + '</div><div><div class="db-stat-val">~' + r.burn.toLocaleString() + ' kcal/day</div>'
         + '<div class="db-stat-lbl">Estimated daily energy use (TDEE)' + (r.band ? ' \u00b7 ' + esc(r.band.label) : '') + (r.bodyAssumed ? ' \u00b7 typical body size assumed' : '') + '</div></div></div>'
       : '';
-    const summary = r.hasActivities
+    const summary = r.quick
+      ? kv('Typical day:', r.quick.day) + kv('Exercise on purpose:', r.quick.exercise) + kv('Other:', r.habits.join(' \u00b7 '), 'db-opt')
+      : r.hasActivities
       ? kv('Typical day:', r.dayParts.join(' \u00b7 '))
         + kv('Regular activity:', r.activeList.length ? r.activeList.slice(0, 5).join('; ') + (r.activeList.length > 5 ? '; +' + (r.activeList.length - 5) + ' more' : '') : 'none logged beyond daily routine')
         + (r.weekTotal ? kv('Weekly activities:', 'about ' + r.weekTotal.toLocaleString() + ' kcal a week in total (rough guide; not part of the daily figure)') : '')

@@ -5,10 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="description" content="Describe a typical day: sleep, work and movement. KYH estimates your daily energy use, then shortlists exercises matched to you. Stays in your browser.">
       <title>Your daily routine — KYH</title>
-     <link rel="stylesheet" href="shared/styles.css?v=20261121-e53041a">
+     <link rel="stylesheet" href="shared/styles.css?v=20261121-3f19237">
+<style>
+.dt-grid { display:grid; gap:10px; grid-template-columns:1fr; }
+.dt-card { text-align:left; background:#fff; border:1px solid var(--line); padding:14px 16px; cursor:pointer; font:inherit; display:flex; flex-direction:column; gap:4px; }
+.dt-card .dt-title { font-weight:700; font-size:15.5px; color:var(--ink, #1f2a24); }
+.dt-card .dt-eg { font-size:13.5px; color:var(--muted); line-height:1.45; }
+.dt-card.selected { background:var(--ink, #1f2a24); border-color:var(--ink, #1f2a24); }
+.dt-card.selected .dt-title, .dt-card.selected .dt-eg { color:#fff; }
+.dt-card:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+@media (min-width:640px) { .dt-grid { grid-template-columns:1fr 1fr; } }
+</style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-e53041a">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-3f19237">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +26,7 @@
 <meta property="og:title" content="Your daily routine — KYH">
 <meta property="og:description" content="Describe a typical day: sleep, work and movement. KYH estimates your daily energy use, then shortlists exercises matched to you. Stays in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/routine.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-e53041a">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-3f19237">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,11 +43,11 @@
 
     <footer id="app-footer"></footer>
 
-    <script src="shared/data.activities.js?v=20261121-e53041a"></script>
-    <script src="shared/data.exercises.js?v=20261121-e53041a"></script>
-    <script src="shared/utils.js?v=20261121-e53041a"></script>
-    <script src="shared/movement-plan.js?v=20261121-e53041a"></script>
-<script src="shared/vault.js?v=20261121-e53041a"></script>
+    <script src="shared/data.activities.js?v=20261121-3f19237"></script>
+    <script src="shared/data.exercises.js?v=20261121-3f19237"></script>
+    <script src="shared/utils.js?v=20261121-3f19237"></script>
+    <script src="shared/movement-plan.js?v=20261121-3f19237"></script>
+<script src="shared/vault.js?v=20261121-3f19237"></script>
     <script>
       const state = loadState();
       const profile = state.profile;
@@ -77,6 +87,8 @@
       let sleepH = null;
       let items = [];            // { id, freq, mins (per day or per session), perWeek? }
       let habits = {};
+      let mode = 'simple';       // 'simple' (day type) or 'detailed' (hour by hour)
+      let dayType = null, exDays = null;
 
       const nameOf = id => LABEL[id] || (defOf(id) || {}).name || id;
       const find = id => items.find(a => a.id === id);
@@ -86,6 +98,9 @@
       function restore() {
         const r = state.routine;
         habits = (r && r.habits) || {};
+        if (r && r.dayType) { dayType = r.dayType; exDays = r.exerciseDays || null; }
+        // Someone who built their day hour by hour keeps that view, so nothing they entered is hidden.
+        if (r && r.mode === 'detailed' || (r && !r.dayType && Array.isArray(r.activities) && r.activities.length && r.activitiesConfirmed !== false)) mode = 'detailed';
         // A pre-filled placeholder week from an earlier version is not the person's data.
         if (!r || !Array.isArray(r.activities) || r.activitiesConfirmed === false) return;
         r.activities.forEach(a => {
@@ -115,9 +130,19 @@
       }
 
       function buildRoutine() {
+        if (mode === 'simple') {
+          const q = estimateTdeeFromDayType(dayType, exDays, profile);
+          return Object.assign({}, state.routine || {}, {
+            mode: 'simple', dayType, exerciseDays: exDays,
+            activities: [], activitiesConfirmed: true,
+            estimatedCalories: q ? q.kcal : 0, estimatedRange: q ? [q.low, q.high] : null,
+            unloggedHours: null, habits: readHabits()
+          });
+        }
         const L = ledger();
         const weekly = items.filter(a => a.freq === 'weekly' && a.mins > 0 && a.perWeek).map(a => Object.assign({ id: a.id, freq: 'weekly', perWeek: a.perWeek }, hhmm(a.mins)));
         return Object.assign({}, state.routine || {}, {
+          mode: 'detailed', dayType: null, exerciseDays: null, estimatedRange: null,
           activities: L.acts.concat(weekly), activitiesConfirmed: true,
           estimatedCalories: L.burn, unloggedHours: Math.round(L.rest * 4) / 4, habits: readHabits()
         });
@@ -223,30 +248,76 @@
         renderSections('#' + CSS.escape(inp.id));
       }
 
+      /* ---------- the quick view: two questions, one number ---------- */
+      function quickHtml() {
+        const dayCards = DAY_TYPES.map(d => `<button type="button" class="dt-card${dayType === d.key ? ' selected' : ''}" data-day="${d.key}" aria-pressed="${dayType === d.key}">
+            <span class="dt-title">${esc(d.title)}</span><span class="dt-eg">${esc(d.eg)}</span></button>`).join('');
+        const exOpts = EXERCISE_LEVELS.map(e => `<input type="radio" name="ex-days" id="ex-${e.key}" value="${e.key}"${exDays === e.key ? ' checked' : ''}><label for="ex-${e.key}">${esc(e.title)}</label>`).join('');
+        return `<div class="cat-title">Your usual day</div>
+          <p class="lede" style="font-size:15px;margin-bottom:12px;">Which sounds most like it?</p>
+          <div class="dt-grid" role="group" aria-label="Your usual day">${dayCards}</div>
+          <div class="cat-title">Exercise</div>
+          <p class="lede" style="font-size:15px;margin-bottom:4px;">Do you exercise on purpose?</p>
+          <p class="rt-hint" style="margin-top:0;">A walk, gym, sport or yoga that makes you breathe a little harder, for 20 minutes or more.</p>
+          <div class="rt-q"><div class="radio-pair" role="radiogroup" aria-label="Days a week you exercise">${exOpts}</div></div>
+          <div class="note-block teal" id="qk-result" style="margin-top:22px;" aria-live="polite"></div>`;
+      }
+      function paintQuick() {
+        const box = document.getElementById('qk-result'); if (!box) return;
+        const q = estimateTdeeFromDayType(dayType, exDays, profile);
+        if (!q) {
+          box.innerHTML = dayType ? 'Choose how often you exercise to see your estimate.' : 'Choose your usual day to see your estimate.';
+          return;
+        }
+        box.innerHTML = `<span class="k">Est. daily energy use</span>
+          <div style="font-size:26px;font-weight:700;margin:4px 0 2px;">About ${approxKcal(q.kcal).toLocaleString()} kcal a day</div>
+          <div style="font-size:14.5px;">Likely between ${approxKcal(q.low).toLocaleString()} and ${approxKcal(q.high).toLocaleString()}.</div>
+          <p class="rt-hint" style="margin:8px 0 0;">Your resting energy from age, sex, height and weight${q.bodyAssumed ? ` (using ${TYPICAL_BODY_TEXT}, because you have not added yours)` : ''}, scaled for your kind of day and exercise. It is an estimate, not a measurement.</p>`;
+      }
+      function setMode(m) {
+        mode = m;
+        const simple = m === 'simple';
+        document.getElementById('rt-simple').hidden = !simple;
+        document.getElementById('rt-detail').hidden = simple;
+        document.getElementById('rt-lede').textContent = simple
+          ? 'Two quick questions, and no hours to add up.'
+          : 'Answer a few quick questions about a normal day. You do not need to add up to 24 hours: anything we do not ask about is counted as light time, like sitting, standing and moving about (about 1.5 METs).';
+        document.getElementById('rt-switch').innerHTML = simple
+          ? 'Want more detail? <a href="#" id="rt-switch-a">Build my day hour by hour &rarr;</a>'
+          : '<a href="#" id="rt-switch-a">&larr; Use the quick version instead</a>';
+        document.getElementById('rt-switch-a').addEventListener('click', e => { e.preventDefault(); setMode(simple ? 'detailed' : 'simple'); });
+        if (simple) paintQuick(); else renderSections();
+      }
+
       function init() {
         restore();
         main.innerHTML = `
           <div class="section-head"><h2>Your typical day</h2></div>
-          <p class="lede">Answer a few quick questions about a normal day. You do not need to add up to 24 hours: anything we do not ask about is counted as light time, like sitting, standing and moving about (about 1.5 METs).</p>
+          <p class="lede" id="rt-lede"></p>
           ${bodySizeNoticeHtml(profile, 'routine.html')}
-          <div class="stat-strip" id="rt-sum"></div>
-          <p class="rt-hint">Worked out from your age, height, weight and sex, scaled by how active each part of your day is. It is an estimate, not a measurement.</p>
-          <p class="rt-hint" id="rt-over" style="color:var(--rose);" aria-live="polite"></p>
-          <div id="rt-secs"></div>
-
-          <div class="cat-title">Daily signals</div>
-          <p class="lede" style="font-size:14px; margin-bottom:16px;">Optional. These fine-tune your insights beyond the activity list.</p>
-          <div class="field-row" style="margin-bottom:18px;">
-            <div class="field"><label class="intake-label" for="hab-steps">Steps per day</label>
-              <input type="number" id="hab-steps" min="0" max="40000" step="500" placeholder="e.g. 6000"></div>
-            <div class="field"><label class="intake-label" for="hab-sun">Daylight outdoors</label>
-              <input type="number" id="hab-sun" min="0" max="300" step="5" placeholder="minutes / day"></div>
-            <div class="field"><label class="intake-label" for="hab-dinner">Dinner &rarr; sleep gap</label>
-              <input type="number" id="hab-dinner" min="0" max="8" step="0.5" placeholder="hours"></div>
+          <div id="rt-simple">${quickHtml()}</div>
+          <div id="rt-detail" hidden>
+            <div class="stat-strip" id="rt-sum"></div>
+            <p class="rt-hint">Worked out from your age, height, weight and sex, scaled by how active each part of your day is. It is an estimate, not a measurement.</p>
+            <p class="rt-hint" id="rt-over" style="color:var(--rose);" aria-live="polite"></p>
+            <div id="rt-secs"></div>
+            <div class="note-block teal" style="margin:20px 0;"><p id="rt-nudge" style="margin:0;" aria-live="polite"></p></div>
           </div>
-          <div class="check-field" style="margin-bottom:12px;"><input type="checkbox" id="hab-post-meal"><label for="hab-post-meal">I usually walk 10+ minutes after my largest meal</label></div>
-          <div class="note-block teal" style="margin-bottom:28px;">Steps, daylight, and meal timing affect recovery and glucose in ways an activity list does not capture.
-            <p id="rt-nudge" style="margin:10px 0 0;" aria-live="polite"></p></div>
+          <p class="rt-hint" id="rt-switch" style="margin:18px 0 6px;"></p>
+
+          <details class="rt-fine" id="rt-fine" style="margin:18px 0 28px;">
+            <summary class="cat-title" style="cursor:pointer;margin:0;">Fine-tune (optional)</summary>
+            <p class="lede" style="font-size:14px; margin:10px 0 16px;">Steps, daylight and meal timing affect recovery and glucose in ways an activity list does not capture. These sharpen your insights.</p>
+            <div class="field-row" style="margin-bottom:18px;">
+              <div class="field"><label class="intake-label" for="hab-steps">Steps per day</label>
+                <input type="number" id="hab-steps" min="0" max="40000" step="500" placeholder="e.g. 6000"></div>
+              <div class="field"><label class="intake-label" for="hab-sun">Daylight outdoors</label>
+                <input type="number" id="hab-sun" min="0" max="300" step="5" placeholder="minutes / day"></div>
+              <div class="field"><label class="intake-label" for="hab-dinner">Dinner &rarr; sleep gap</label>
+                <input type="number" id="hab-dinner" min="0" max="8" step="0.5" placeholder="hours"></div>
+            </div>
+            <div class="check-field"><input type="checkbox" id="hab-post-meal"><label for="hab-post-meal">I usually walk 10+ minutes after my largest meal</label></div>
+          </details>
 
           <div class="validation-msg alert-banner" id="time-msg" aria-live="polite"></div>
           <div class="page-footer-nav">
@@ -259,7 +330,15 @@
         if (habits.sun != null) document.getElementById('hab-sun').value = habits.sun;
         if (habits.dinner != null) document.getElementById('hab-dinner').value = habits.dinner;
         if (habits.postMealWalk) document.getElementById('hab-post-meal').checked = true;
-        renderSections();
+        if (habits.steps != null || habits.sun != null || habits.dinner != null || habits.postMealWalk) document.getElementById('rt-fine').open = true;
+        setMode(mode);
+        document.getElementById('rt-simple').addEventListener('click', e => {
+          const b = e.target.closest('.dt-card'); if (!b) return;
+          dayType = b.dataset.day;
+          document.querySelectorAll('.dt-card').forEach(x => { const on = x.dataset.day === dayType; x.classList.toggle('selected', on); x.setAttribute('aria-pressed', on); });
+          paintQuick();
+        });
+        document.getElementById('rt-simple').addEventListener('change', e => { if (e.target.name === 'ex-days') { exDays = e.target.value; paintQuick(); } });
 
         const secs = document.getElementById('rt-secs');
         secs.addEventListener('click', e => { const b = e.target.closest('.browse-chip'); if (b) onChip(b); });
@@ -278,6 +357,12 @@
             if (!el || el.value === '') continue;
             const v = parseFloat(el.value);
             if (isNaN(v) || v < min || v > max) return fail(`${label} looks out of range. Please enter a value between ${min} and ${max}.`, el);
+          }
+          if (mode === 'simple') {
+            if (!dayType) return fail('Please choose which sounds most like your usual day.', document.querySelector('.dt-card'));
+            if (!exDays) return fail('Please choose how often you exercise on purpose.', document.querySelector('[name="ex-days"] + label'));
+            msg.textContent = '';
+            return showPlan(true);
           }
           if (sleepH == null) return fail('Please choose how long you usually sleep.', document.querySelector('[data-kind="sleep"]'));
           if (!items.length) return fail('Please add at least one thing you do on a normal day, such as work, cooking or a walk.', document.querySelector('#rt-secs .browse-chip:not([data-kind=sleep])'));
@@ -317,6 +402,6 @@
         init();
       }
     </script>
-  <script src="shared/statusbar.js?v=20261121-e53041a"></script>
+  <script src="shared/statusbar.js?v=20261121-3f19237"></script>
 </body>
 </html>

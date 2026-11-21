@@ -11,7 +11,7 @@
 
   var FEEDBACK_TO = 'info@vividnova.com';
 
-  var APP_VERSION = '1.7';
+  var APP_VERSION = '1.8';
 
   function build() {
     var me = document.currentScript || document.querySelector('script[src*="statusbar.js"]');

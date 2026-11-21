@@ -267,7 +267,20 @@ def full_flow(page, base, problems):
 
     # --- routine (nothing pre-selected; daily and weekly)
     page.wait_for_selector('#continue-btn')
-    check(page.locator('.browse-chip.selected').count() == 0, 'routine: nothing pre-selected')
+    check(page.locator('.dt-card.selected').count() == 0 and page.locator('[name="ex-days"]:checked').count() == 0, 'routine: quick view opens with nothing pre-selected')
+    check(page.locator('.dt-card').count() == 4 and page.locator('[name="ex-days"]').count() == 4, 'routine: the quick view asks two questions, four choices each')
+    check('hour by hour' in page.inner_text('#rt-switch').lower(), 'routine: a link offers the hour-by-hour builder')
+    page.locator('#continue-btn').click()
+    check('usual day' in page.inner_text('#time-msg').lower(), 'routine: Continue asks for the day type first', page.inner_text('#time-msg'))
+    page.locator('.dt-card[data-day="feet"]').click()
+    check('exercise' in page.inner_text('#qk-result').lower(), 'routine: result waits for the second answer')
+    page.locator('label[for="ex-3-4"]').click()
+    res = page.inner_text('#qk-result')
+    check(re.search(r'about [\d,]+ kcal a day', res, re.I) and re.search(r'between [\d,]+ and [\d,]+', res, re.I), 'routine: one number with a range', res)
+    # detailed builder, via the link (existing behaviour)
+    page.locator('#rt-switch-a').click()
+    check(page.locator('#rt-detail').is_visible() and not page.locator('#rt-simple').is_visible(), 'routine: the link opens the hour-by-hour builder')
+    check(page.locator('.browse-chip.selected').count() == 0, 'routine: nothing pre-selected in the detailed view')
     page.locator('.browse-chip[data-id="sleep-7"]').click()
     page.locator('.browse-chip[data-id="act_015"]').click()
     page.locator('label[for="hd-act_015-480"]').click()
@@ -289,7 +302,7 @@ def full_flow(page, base, problems):
     check('routine.html' in page.url, 'routine: the exercise plan opens on the same page, no new screen')
     routine = state_of(page)['routine']
     check(routine.get('estimatedCalories', 0) > 1000, 'routine: daily burn saved', routine.get('estimatedCalories'))
-    check(any(a.get('freq') == 'weekly' for a in routine['activities']), 'routine: weekly activity saved')
+    check(any(a.get('freq') == 'weekly' for a in routine['activities']) and routine.get('mode') == 'detailed', 'routine: weekly activity saved and the detailed mode remembered')
 
     # --- exercises (same page, under the day)
     check(page.inner_text('#movement-plan h2').strip() == 'Your matched exercises', 'exercises: heading says "matched"', page.inner_text('#movement-plan h2'))
@@ -377,6 +390,46 @@ def regressions(page, base):
     page.select_option('#f-repro-status', 'Currently pregnant')
     page.wait_for_timeout(400)
     check('Your pregnancy deserves specialized care' in page.inner_text('body'), 'pregnancy: profile pauses with a care message')
+
+
+def quick_day(browser, base):
+    print('\nRoutine: quick day type')
+    page = browser.new_page(viewport={'width': 390, 'height': 900})
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': []}
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'routine.html')
+    page.wait_for_selector('.dt-card')
+    page.locator('.dt-card[data-day="sit"]').click(); page.locator('label[for="ex-none"]').click()
+    resting = 10 * 80 + 6.25 * 172 - 5 * 45 + 5
+    page.locator('.dt-card[data-day="hard"]').click(); page.locator('label[for="ex-5+"]').click()
+    page.locator('#continue-btn').click()
+    page.wait_for_selector('#movement-plan .test-card')
+    r = state_of(page)['routine']
+    check(r.get('mode') == 'simple' and r.get('dayType') == 'hard' and r.get('exerciseDays') == '5+', 'quick: day type, exercise and mode saved', {k: r.get(k) for k in ('mode', 'dayType', 'exerciseDays')})
+    check(abs(r['estimatedCalories'] - resting * 2.05) < 3 and r['estimatedRange'][0] < r['estimatedCalories'] < r['estimatedRange'][1], 'quick: daily burn is resting energy x activity factor, with a range', (r['estimatedCalories'], r.get('estimatedRange')))
+    check(r.get('activities') == [] and r.get('activitiesConfirmed') is True, 'quick: no invented hour-by-hour list')
+    # reopening keeps the choices and the quick view
+    page.goto(base + '/routine.html'); page.wait_for_selector('.dt-card')
+    check(page.locator('.dt-card.selected').get_attribute('data-day') == 'hard' and page.locator('[name="ex-days"]:checked').get_attribute('value') == '5+' and page.locator('#rt-simple').is_visible(), 'quick: reopening restores both answers in the quick view')
+    # fine-tune is optional and collapsed
+    check(not page.locator('#hab-steps').is_visible(), 'quick: fine-tune fields are collapsed')
+    page.locator('#rt-fine summary').click(); page.fill('#hab-steps', '7000')
+    page.locator('#continue-btn').click(); page.wait_for_selector('#movement-plan .test-card')
+    check(state_of(page)['routine']['habits']['steps'] == 7000, 'quick: optional steps still saved')
+    # downstream: Doctor Brief and diet use the stored figure
+    page.goto(base + '/summary.html'); page.wait_for_function("() => window.KYHDoctorBrief")
+    blk = page.evaluate("() => { const st = JSON.parse(sessionStorage.getItem('%s')); const b = window.KYHDoctorBrief.routineBlock(st); return {burn: b.burn, quick: b.quick}; }" % STATE_KEY)
+    check(blk['burn'] > 2000 and blk['quick'] and 'hard' in blk['quick']['day'].lower(), 'quick: Doctor Brief shows the day type and the burn', blk)
+    # a person who built the hour-by-hour day earlier keeps that view
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'activities': [{'id': 'act_011', 'freq': 'daily', 'hours': 7, 'mins': 0}, {'id': 'act_015', 'freq': 'daily', 'hours': 8, 'mins': 0}], 'activitiesConfirmed': True, 'estimatedCalories': 2000}}, 'routine.html')
+    page.wait_for_selector('#rt-secs')
+    check(page.locator('#rt-detail').is_visible() and page.locator('.browse-chip.selected').count() >= 2, 'quick: an earlier hour-by-hour day opens in the detailed view with its entries')
+    page.locator('#rt-switch-a').click()
+    check(page.locator('#rt-simple').is_visible(), 'quick: the detailed view links back to the quick one')
+    # no height/weight: typical body size is stated
+    inject(page, base, {'profile': {'age': 45, 'sex': 'Female', 'symptoms': []}, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'routine.html')
+    page.wait_for_selector('.dt-card'); page.locator('.dt-card[data-day="light"]').click(); page.locator('label[for="ex-1-2"]').click()
+    check('typical body size' in page.inner_text('#qk-result').lower(), 'quick: result says when a typical body size is used')
+    page.close()
 
 
 def save_and_open(browser, base):
@@ -680,6 +733,10 @@ def main():
             lighter_start(browser, base)
         except Exception as e:
             check(False, 'shorter start checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            quick_day(browser, base)
+        except Exception as e:
+            check(False, 'quick day checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             hidden_unit_does_not_block(browser, base)
         except Exception as e:
