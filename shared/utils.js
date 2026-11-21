@@ -561,12 +561,15 @@ function renderHeader(activeStep = 'fine', pageTitle = 'Know Your Health') {
   if (window.KYHVault) window.KYHVault.mount();   // Save / Open links (shared/vault.js)
 }
 
-function renderFooter() {
+/* One disclaimer is enough: it lives on the home page, the results pages and the printed Doctor Brief.
+   Step pages keep a short privacy line and "Start over". Pass { disclaimer: true } on results pages. */
+function renderFooter(opts) {
   const target = document.querySelector('footer') || document.getElementById('app-footer');
   if (!target) return;
+  const showDisclaimer = !!(opts && opts.disclaimer);
   target.innerHTML = `
-    <span>KYH &mdash; Know Your Health. Own Your Path. Your answers stay in your browser and are never sent to KYH. Video pictures and playback come from YouTube.</span>
-    <span>Not a substitute for professional medical advice. <a href="#" id="kyh-start-over">Start over</a></span>
+    <span>KYH &mdash; Know Your Health. Your answers stay in your browser and are never sent to KYH. Video pictures and playback come from YouTube.</span>
+    <span>${showDisclaimer ? 'Not a substitute for professional medical advice. ' : ''}<a href="#" id="kyh-start-over">Start over</a></span>
   `;
   const so = document.getElementById('kyh-start-over');
   if (so) so.addEventListener('click', (e) => {

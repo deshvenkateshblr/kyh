@@ -112,13 +112,12 @@ function renderPage() {
       `<div class="empty-state">We need your profile first. <a href="profile.html">Go back to start →</a></div>`;
     return;
   }
-  if (!profile.dietType || !profile.cuisine) {
-    document.getElementById("main-content").innerHTML =
-      `<div class="empty-state">We need your dietary &amp; cuisine preference first. <a href="profile.html">Go back to Profile →</a></div>`;
-    return;
-  }
-
   const main = document.getElementById("main-content");
+  const DIET_TYPES = ["Vegetarian","Vegan","Eggetarian","Jain","Pescatarian","Non-Vegetarian"];
+  const CUISINES = ["Indian","Mediterranean","East Asian","Middle Eastern","Western / Continental"];
+  const curDiet = profile.dietType || dietState.type || "";
+  const curCuisine = profile.cuisine || dietState.cuisine || "Indian";
+  const opts = (list, cur) => list.map(v => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(v)}</option>`).join("");
   main.innerHTML = `
     <p class="lede" style="margin-bottom:28px;">
       Based on your symptoms, body composition, routine and preferences we prioritise the nutrients that matter most for you right now.
@@ -126,9 +125,15 @@ function renderPage() {
 
     <div class="note-block" style="margin-bottom:28px;">
       <span class="k">Dietary &amp; cuisine preference</span>
-      <div style="margin-top:6px;font-size:14px;">
-        <b>${esc(profile.dietType)}</b> &middot; <b>${esc(profile.cuisine)}</b>
-        &nbsp;&mdash;&nbsp;<a href="profile.html">change on Profile →</a>
+      <div class="field-row" style="margin-top:10px;max-width:520px;">
+        <div class="field">
+          <label class="intake-label" for="d-type">Dietary preference</label>
+          <select id="d-type"><option value=""${curDiet ? "" : " selected"} disabled>&mdash; Select &mdash;</option>${opts(DIET_TYPES, curDiet)}</select>
+        </div>
+        <div class="field">
+          <label class="intake-label" for="d-cuisine">Cuisine</label>
+          <select id="d-cuisine">${opts(CUISINES, curCuisine)}</select>
+        </div>
       </div>
     </div>
 
@@ -163,6 +168,18 @@ function renderPage() {
   renderFrequencyMatrix();
   // Nutrient cards
   renderNutrients();
+
+  // Dietary / cuisine preference picked here (Profile no longer requires it)
+  function onPrefChange() {
+    const t = document.getElementById("d-type").value;
+    const c = document.getElementById("d-cuisine").value;
+    if (t) { profile.dietType = t; dietState.type = t; }
+    profile.cuisine = c; dietState.cuisine = c;
+    persistState(Object.assign({}, state, { profile, diet: dietState }));
+    renderNutrients();
+  }
+  document.getElementById("d-type").addEventListener("change", onPrefChange);
+  document.getElementById("d-cuisine").addEventListener("change", onPrefChange);
 
   // Frequency matrix change
  document.getElementById("markers-container").addEventListener("change", e => {

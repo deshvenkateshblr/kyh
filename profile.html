@@ -17,6 +17,11 @@
 .scope-panel .reason-box ul { margin:12px 0 0 20px; padding:0; }
 .scope-panel .cta-block { background:linear-gradient(135deg, var(--teal-light, #e0f7f4) 0%, var(--bg-light) 100%); padding:24px; border-radius:8px; margin:30px 0; text-align:left; }
 .scope-panel .cta-block p { margin:0; font-size:14px; line-height:1.6; color:var(--ink-soft); }
+
+  .more-detail { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 0 26px; padding: 14px 2px; }
+  .more-detail > summary { cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--teal); }
+  .more-detail > summary span { text-transform: none; letter-spacing: 0; opacity: .75; }
+  .more-detail-body { padding-top: 22px; }
 </style>
 <!-- share:start -->
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -97,7 +102,11 @@
 </main>
 
 <main id="profile-main">
-  <form id="profile-form">
+  <form id="profile-form" novalidate>
+
+    <p class="lede" style="font-size:13.5px; margin:0 0 22px;">
+      KYH helps you prepare questions for your doctor. It is not medical advice, and it is not for pregnancy, recent surgery, food allergies or new warning symptoms such as chest pain. <a href="about.html">Details</a>
+    </p>
 
     <div class="field-row" style="margin-bottom:22px;">
       <div class="field">
@@ -111,7 +120,7 @@
     </div>
 
 <div class="field-row" style="margin-bottom:8px;">
-      
+
       <!-- HEIGHT GROUP -->
       <div class="field" role="group" aria-labelledby="label-height">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
@@ -147,6 +156,57 @@
         </div>
       </div>
 
+    </div>
+    <div class="badge-row">
+      <div class="badge">
+        <div class="badge-ring" id="bmi-ring">&mdash;</div>
+        <div class="badge-text"><b>Body Mass Index</b><span id="bmi-tag-text"></span></div>
+      </div>
+    </div>
+
+    <div class="cat-title" id="repro-title" style="display:none;">Reproductive health</div>
+    <div class="field-row" id="repro-field-row" style="display:none; margin-bottom:22px;">
+      <div class="field" style="max-width:360px; flex-direction:column; align-items:flex-start; gap:10px;">
+        <div>
+          <label class="intake-label" for="f-repro-status">Menstrual &amp; menopause status</label>
+          <select id="f-repro-status" style="min-width:240px;">
+          <option value="" selected disabled>&mdash; Select &mdash;</option>
+          <option value="Regular cycle">Regular cycle</option>
+          <option value="Irregular cycle">Irregular cycle</option>
+          <option value="Currently pregnant">Currently pregnant</option>
+          <option value="Postpartum">Postpartum (within 1 year)</option>
+          <option value="Perimenopausal">Perimenopausal</option>
+          <option value="Post-menopausal">Post-menopausal</option>
+          <option value="Not applicable">Not applicable</option>
+          <option value="Not sure">Not sure</option>
+        </select>
+        </div>
+        <div class="check-field">
+          <input type="checkbox" id="f-pcos">
+          <label for="f-pcos" style="white-space:nowrap;">Diagnosed with PCOS</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-row" style="margin-bottom:22px;">
+      <div class="field">
+        <label class="intake-label" for="f-diet-type">Dietary preference <span style="font-weight:400;opacity:.7;">(optional &mdash; helps match B12 and iron tests)</span></label>
+        <select id="f-diet-type">
+          <option value="" selected>&mdash; Skip &mdash;</option>
+          <option value="Vegetarian">Vegetarian</option>
+          <option value="Vegan">Vegan</option>
+          <option value="Eggetarian">Eggetarian</option>
+          <option value="Jain">Jain</option>
+          <option value="Pescatarian">Pescatarian</option>
+          <option value="Non-Vegetarian">Non-Vegetarian</option>
+        </select>
+      </div>
+    </div>
+
+    <details id="more-detail" class="more-detail">
+      <summary>Add more detail <span>(optional &mdash; sharpens your results)</span></summary>
+      <div class="more-detail-body">
+
       <!-- WAIST GROUP -->
       <div class="field" role="group" aria-labelledby="label-waist">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
@@ -163,18 +223,12 @@
           <input type="number" id="f-waist-in" min="20" max="80" placeholder="in" step="any" aria-label="Waist in inches">
         </div>
       </div>
-
-    </div>
-    <div class="badge-row">
-      <div class="badge">
-        <div class="badge-ring" id="bmi-ring">&mdash;</div>
-        <div class="badge-text"><b>Body Mass Index</b><span id="bmi-tag-text"></span></div>
-      </div>
-      <div class="badge">
-        <div class="badge-ring amber" id="whtr-ring">&mdash;</div>
-        <div class="badge-text"><b>Waist-to-Height Ratio</b><span id="whtr-tag-text"></span></div>
-      </div>
-    </div>
+        <div class="badge-row" style="margin-top:14px;">
+          <div class="badge">
+            <div class="badge-ring amber" id="whtr-ring">&mdash;</div>
+            <div class="badge-text"><b>Waist-to-Height Ratio</b><span id="whtr-tag-text"></span></div>
+          </div>
+        </div>
 
     <div class="check-field" style="margin-bottom:22px;">
       <input type="checkbox" id="f-adjust-india" checked>
@@ -212,47 +266,11 @@
       </div>
     </div>
 
-    <div class="cat-title" id="repro-title" style="display:none;">Reproductive health</div>
-    <div class="field-row" id="repro-field-row" style="display:none; margin-bottom:22px;">
-      <div class="field" style="max-width:360px; flex-direction:column; align-items:flex-start; gap:10px;">
-        <div>
-          <label class="intake-label" for="f-repro-status">Menstrual &amp; menopause status</label>
-          <select id="f-repro-status" style="min-width:240px;">
-          <option value="" selected disabled>&mdash; Select &mdash;</option>
-          <option value="Regular cycle">Regular cycle</option>
-          <option value="Irregular cycle">Irregular cycle</option>
-          <option value="Currently pregnant">Currently pregnant</option>
-          <option value="Postpartum">Postpartum (within 1 year)</option>
-          <option value="Perimenopausal">Perimenopausal</option>
-          <option value="Post-menopausal">Post-menopausal</option>
-          <option value="Not applicable">Not applicable</option>
-          <option value="Not sure">Not sure</option>
-        </select>
-        </div>
-        <div class="check-field">
-          <input type="checkbox" id="f-pcos">
-          <label for="f-pcos" style="white-space:nowrap;">Diagnosed with PCOS</label>
-        </div>
-      </div>
-    </div>
-
     <div class="field-row" style="margin-bottom:22px;">
-      <div class="field">
-        <label class="intake-label" for="f-diet-type">Dietary preference</label>
-        <select id="f-diet-type">
-          <option value="" selected disabled>&mdash; Select &mdash;</option>
-          <option value="Vegetarian">Vegetarian</option>
-          <option value="Vegan">Vegan</option>
-          <option value="Eggetarian">Eggetarian</option>
-          <option value="Jain">Jain</option>
-          <option value="Pescatarian">Pescatarian</option>
-          <option value="Non-Vegetarian">Non-Vegetarian</option>
-        </select>
-      </div>
       <div class="field">
         <label class="intake-label" for="f-cuisine-type">Cuisine preference</label>
         <select id="f-cuisine-type">
-          <option value="" selected disabled>&mdash; Select &mdash;</option>
+          <option value="" selected>&mdash; Skip (Indian) &mdash;</option>
           <option value="Indian">Indian</option>
           <option value="Mediterranean">Mediterranean</option>
           <option value="East Asian">East Asian</option>
@@ -274,8 +292,12 @@
       </div>
     </div>
 
+      </div>
+    </details>
+
     <div class="page-footer-nav">
       <span id="validation-msg" class="validation-msg" aria-live="polite"></span>
+      <button type="button" class="btn secondary" id="btn-quick">Skip symptoms, show my tests &rarr;</button>
       <button type="submit" class="btn">Continue to Symptoms &rarr;</button>
     </div>
   </form>
@@ -548,35 +570,33 @@ refreshMetrics();
 
 
 
-/* ---- submit ---- */
-document.getElementById('profile-form').addEventListener('submit', (e) => {
-  e.preventDefault();
+/* ---- submit ----
+   Required: sex, age, height, weight (and menstrual / menopause status for women, which is the pregnancy check).
+   Everything else is optional. A blank optional field is saved as null / '' so no result is built on a guess. */
+function submitProfile(target) {
   const sex = document.getElementById('f-sex').value;
   const age = parseFloat(document.getElementById('f-age').value);
-  const heightCm = getHeightCm(), weightKg = getWeightKg(), waistCm = getWaistCm();
+  const heightCm = getHeightCm(), weightKg = getWeightKg();
+  const waistRaw = getWaistCm();
+  const waistCm = (!isNaN(waistRaw) && waistRaw > 0) ? waistRaw : null;
   const smoking = normalizeLifestyle(document.getElementById('f-smoking').value);
   const alcohol = normalizeLifestyle(document.getElementById('f-alcohol').value);
   const reproStatus = document.getElementById('f-repro-status').value;
   const dietType = document.getElementById('f-diet-type').value;
   const cuisine = document.getElementById('f-cuisine-type').value;
-  
+
   const medicalStatus = (state.profile && state.profile.medicalStatus) || 'stable';
-  
   const msg = document.getElementById('validation-msg');
+  const details = document.getElementById('more-detail');
 
   if (checkAgeScope() || checkPregnancyScope()) return;
 
-  if (!sex || isNaN(age) || age <= 0 || isNaN(heightCm) || heightCm <= 0 || isNaN(weightKg) || weightKg <= 0 || isNaN(waistCm) || waistCm <= 0 || !smoking || !alcohol) {
-    msg.textContent = 'Please fill in every field above before continuing.';
+  if (!sex || isNaN(age) || age <= 0 || isNaN(heightCm) || heightCm <= 0 || isNaN(weightKg) || weightKg <= 0) {
+    msg.textContent = 'Please enter your sex, age, height and weight to continue.';
     return;
   }
 
-  // ---- Explicit bounds check (defense-in-depth) ----
-  // The number inputs also carry HTML min/max, but this page's "Continue"
-  // button submits a real <form>, so native browser validation normally
-  // catches this too. We check again here in JS so this page doesn't rely
-  // on that alone — the same bounds are enforced explicitly regardless of
-  // which unit (cm/ft-in, kg/lb) was used to enter the value.
+  // ---- Explicit bounds check (the form is novalidate, so this is the only check) ----
   const AGE_MIN = 1, AGE_MAX = 100;
   const HEIGHT_CM_MIN = 120, HEIGHT_CM_MAX = 230;
   const WEIGHT_KG_MIN = 30, WEIGHT_KG_MAX = 250;
@@ -594,55 +614,18 @@ document.getElementById('profile-form').addEventListener('submit', (e) => {
     msg.textContent = `Weight looks out of range — please enter a value between ${WEIGHT_KG_MIN}kg and ${WEIGHT_KG_MAX}kg.`;
     return;
   }
-  if (waistCm < WAIST_CM_MIN || waistCm > WAIST_CM_MAX) {
-    msg.textContent = `Waist looks out of range — please enter a value between ${WAIST_CM_MIN}cm and ${WAIST_CM_MAX}cm.`;
-    return;
-  }
-
-  if (!dietType || !cuisine) {
-    msg.textContent = 'Please select both Dietary preference and Cuisine preference before continuing.';
+  if (waistCm !== null && (waistCm < WAIST_CM_MIN || waistCm > WAIST_CM_MAX)) {
+    if (details) details.open = true;
+    msg.textContent = `Waist looks out of range — please enter a value between ${WAIST_CM_MIN}cm and ${WAIST_CM_MAX}cm, or leave it blank.`;
     return;
   }
   if (sex === 'Female' && !reproStatus) {
     msg.textContent = 'Please select your menstrual & menopause status before continuing.';
     return;
   }
- 
-
-  // ---- BAILOUT CONDITIONS CHECK ON SUBMIT ----
-  let bailoutReason = null;
-  
-  if (reproStatus === 'Currently pregnant') {
-    bailoutReason = 'pregnancy';
-  } else if (medicalStatus !== 'stable') {
-    bailoutReason = medicalStatus;
-  }
-
-  if (bailoutReason) {
-    persistState({
-      profile: {
-        sex, age, heightCm, weightKg, waistCm,
-        bmi: computeBMI(weightKg, heightCm),
-        whtr: computeWHtR(waistCm, heightCm),
-        reproStatus: sex === 'Female' ? reproStatus : null,
-        smoking, alcohol,
-        famMetabolic: document.getElementById('f-fam-metabolic').checked,
-        famCardio: document.getElementById('f-fam-cardio').checked,
-        pcos: sex === 'Female' ? document.getElementById('f-pcos').checked : false,
-        dietType, cuisine,
-        adjustForIndia: document.getElementById('f-adjust-india').checked,
-        medicalStatus: (state.profile && state.profile.medicalStatus) || 'stable'
-      }
-    });
-    // #fragment, not ?query: pregnancy / medical status must never reach server logs.
-    window.location.href = `not-ready.html#reason=${encodeURIComponent(bailoutReason)}`;
-    return;
-  }
-
-  msg.textContent = '';
 
   const bmi = computeBMI(weightKg, heightCm);
-  const whtr = computeWHtR(waistCm, heightCm);
+  const whtr = waistCm !== null ? computeWHtR(waistCm, heightCm) : null;
   const profile = {
     sex, age, heightCm, weightKg, waistCm, bmi, whtr,
     famMetabolic: document.getElementById('f-fam-metabolic').checked,
@@ -652,12 +635,32 @@ document.getElementById('profile-form').addEventListener('submit', (e) => {
     pcos: sex === 'Female' ? document.getElementById('f-pcos').checked : false,
     dietType, cuisine,
     adjustForIndia: document.getElementById('f-adjust-india').checked,
-    medicalStatus: (state.profile && state.profile.medicalStatus) || 'stable',
+    medicalStatus,
     symptoms: p.symptoms || []
   };
-  const next = Object.assign({}, state, {profile});
-  goTo('symptoms.html', next);
+
+  // ---- BAILOUT CONDITIONS CHECK ON SUBMIT ----
+  let bailoutReason = null;
+  if (reproStatus === 'Currently pregnant') bailoutReason = 'pregnancy';
+  else if (medicalStatus !== 'stable') bailoutReason = medicalStatus;
+
+  if (bailoutReason) {
+    persistState({ profile });
+    // #fragment, not ?query: pregnancy / medical status must never reach server logs.
+    window.location.href = `not-ready.html#reason=${encodeURIComponent(bailoutReason)}`;
+    return;
+  }
+
+  msg.textContent = '';
+  goTo(target, Object.assign({}, state, { profile }));
+}
+
+document.getElementById('profile-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  submitProfile('symptoms.html');
 });
+/* Quick path: straight to the tests list. Symptoms can still be added later from there. */
+document.getElementById('btn-quick').addEventListener('click', () => submitProfile('diagnostics.html'));
 </script>
 
 </body>

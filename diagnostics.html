@@ -399,7 +399,7 @@ function renderResultsStage(){
 
   let symptomLine;
   if (!symptoms.length) {
-    symptomLine = `No symptoms on file &mdash; this is your risk-profile baseline. <a href="symptoms.html">Add symptoms &rarr;</a>`;
+    symptomLine = `Your starter list, based on your age, sex and body profile. Take it to your doctor as it is, or <a href="symptoms.html">add symptoms to sharpen it &rarr;</a>`;
   } else {
     const basedOnText = matchedSymptomsList.length
       ? `Based on: ${matchedSymptomsList.map(esc).join(', ')}`

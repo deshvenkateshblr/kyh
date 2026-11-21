@@ -95,6 +95,7 @@ def full_flow(page, base, problems):
     page.fill('#f-age', '52')
     page.fill('#f-height-cm', '160')
     page.fill('#f-weight-kg', '70')
+    page.evaluate("() => { document.getElementById('more-detail').open = true; }")
     page.fill('#f-waist-cm', '92')
     page.select_option('#f-smoking', 'Never')
     page.select_option('#f-alcohol', 'Occasional')
@@ -302,6 +303,7 @@ def hidden_unit_does_not_block(browser, base):
     print('\nProfile: a hidden unit box must not block Continue')
     page = browser.new_page(viewport={'width': 1000, 'height': 900})
     page.goto(base + 'profile.html')
+    page.evaluate("() => { document.getElementById('more-detail').open = true; }")
     for t in ('height-unit-toggle', 'weight-unit-toggle', 'waist-unit-toggle'):
         page.locator(f'#{t} [data-unit]:not(.active)').first.click()
     # old values left in the boxes that are now hidden, outside their limits
@@ -317,6 +319,78 @@ def hidden_unit_does_not_block(browser, base):
     except Exception:
         ok = False
     check(ok, 'profile: with inches and lb chosen, Continue goes on even if a hidden cm or kg box holds an old value', page.inner_text('#validation-msg') if not ok else '')
+    page.close()
+
+
+def lighter_start(browser, base):
+    print('\nShorter start: fewer required fields, no About gate, one disclaimer')
+    page = browser.new_page(viewport={'width': 1000, 'height': 900})
+    # home goes straight to the profile (no About screen, no checkbox)
+    page.goto(base + 'index.html')
+    hrefs = page.eval_on_selector_all('a.btn', 'els => els.map(e => e.getAttribute("href"))')
+    starts = [h for h in hrefs if h and not h.startswith('#')]
+    check(starts and all(h.startswith('profile.html') for h in starts), 'home: every Start button goes to the profile', hrefs)
+    page.goto(base + 'about.html')
+    check(page.locator('input[type=checkbox]').count() == 0, 'about: no acknowledgement checkbox')
+    check(page.locator('#btn-continue').is_visible(), 'about: Continue is available straight away')
+    check(len((page.inner_text('main') or '').split()) < 260, 'about: short enough to read in under a minute')
+
+    # profile: only sex, age, height, weight are needed
+    page.goto(base + 'profile.html')
+    check(not page.locator('#more-detail').evaluate('e => e.open'), 'profile: optional detail starts closed')
+    page.select_option('#f-sex', 'Male'); page.fill('#f-age', '45')
+    page.fill('#f-height-cm', '172'); page.fill('#f-weight-kg', '80')
+    page.locator('#profile-form button[type=submit]').click()
+    try:
+        page.wait_for_url(re.compile(r'symptoms\.html'), timeout=5000); ok = True
+    except Exception:
+        ok = False
+    check(ok, 'profile: four fields are enough to continue', page.inner_text('#validation-msg') if not ok else '')
+    pr = (state_of(page) or {}).get('profile', {})
+    check(pr.get('waistCm') is None and pr.get('whtr') is None, 'profile: blank waist is saved as nothing, not zero or NaN', pr)
+
+    # a woman is still asked the pregnancy question
+    page.goto(base + 'profile.html')
+    page.select_option('#f-sex', 'Female'); page.fill('#f-age', '33')
+    page.fill('#f-height-cm', '160'); page.fill('#f-weight-kg', '60')
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_timeout(400)
+    check('profile.html' in page.url and 'menstrual' in page.inner_text('#validation-msg').lower(), 'profile: women are still asked the pregnancy question first')
+
+    # out-of-range optional waist opens the detail section and says why
+    page.select_option('#f-repro-status', 'Regular cycle')
+    page.evaluate("() => { document.getElementById('f-waist-cm').value = '3'; }")
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_timeout(400)
+    check(page.locator('#more-detail').evaluate('e => e.open') and 'waist' in page.inner_text('#validation-msg').lower(), 'profile: a bad waist opens the detail section and explains')
+
+    # quick path: straight to tests, with nothing else filled in
+    page.goto(base + 'profile.html')
+    page.select_option('#f-sex', 'Male'); page.fill('#f-age', '52')
+    page.fill('#f-height-cm', '170'); page.fill('#f-weight-kg', '82')
+    page.locator('#btn-quick').click()
+    try:
+        page.wait_for_url(re.compile(r'diagnostics\.html'), timeout=5000); ok = True
+    except Exception:
+        ok = False
+    check(ok, 'quick path: four fields, then straight to the tests list')
+    page.wait_for_selector('.test-card', timeout=8000)
+    check(page.locator('.test-card').count() > 0, 'quick path: a starter list of tests is shown')
+    check('starter list' in page.inner_text('main').lower(), 'quick path: the list is framed as a usable starter result')
+
+    # diet page asks for its own preference instead of sending people back
+    page.goto(base + 'diet.html')
+    page.wait_for_timeout(700)
+    check(page.locator('#d-type').count() == 1 and 'Go back to Profile' not in page.inner_text('main'), 'diet: asks for dietary preference in place, no bounce to Profile')
+    page.select_option('#d-type', 'Vegan')
+    page.wait_for_timeout(300)
+    check((state_of(page) or {}).get('profile', {}).get('dietType') == 'Vegan', 'diet: the choice is saved to the profile')
+
+    # one disclaimer: step pages do not repeat it, results pages do
+    for pg in ('profile.html', 'symptoms.html', 'diagnostics.html'):
+        page.goto(base + pg); page.wait_for_timeout(500)
+        foot = page.inner_text('footer').lower()
+        check('substitute for professional' not in foot, f'{pg}: footer does not repeat the disclaimer')
     page.close()
 
 
@@ -339,6 +413,10 @@ def main():
             save_and_open(browser, base)
         except Exception as e:
             check(False, 'save and open stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            lighter_start(browser, base)
+        except Exception as e:
+            check(False, 'shorter start checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             hidden_unit_does_not_block(browser, base)
         except Exception as e:

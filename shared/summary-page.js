@@ -3,7 +3,7 @@
 const state = loadState() || {};
 const profile = state.profile || {};
 renderHeader('great', "KYH \u2014 You're ready");
-renderFooter();
+renderFooter({ disclaimer: true });
 const main = document.getElementById('main-content');
 let cachedInsights = [];
 

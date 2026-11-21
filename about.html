@@ -26,15 +26,15 @@
     margin: 0;
   }
 
-  /* CHANGED: Grid now uses 3 columns */
+  /* Two short columns */
   .about-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 22px;
     margin-bottom: 36px;
   }
-  /* CHANGED: Adjusted breakpoint for 3 columns */
-  @media (max-width: 900px) {
+  /* Stack on small screens */
+  @media (max-width: 760px) {
     .about-grid { grid-template-columns: 1fr; }
   }
 
@@ -121,29 +121,10 @@
     margin-bottom: 10px;
   }
 
-  .about-ack {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    padding: 10px 18px;
-    margin-bottom: 22px;
-  }
-  .about-ack .check-field {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .about-ack .check-field label {
-    font-size: 13.5px;
-    color: var(--ink);
-    line-height: 1.3;
-  }
-  .about-ack .validation-msg:empty {
-    display: none;
-  }
-  .about-ack .validation-msg {
-    margin: 6px 0 0 26px;
-    font-size: 12.5px;
-  }
+  .about-more { border-top: 1px solid var(--line); padding: 12px 2px; }
+  .about-more summary { cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--teal); }
+  .about-more p { font-size: 14.5px; line-height: 1.65; color: var(--ink-soft); margin: 10px 0 0; }
+  .about-more:last-of-type { border-bottom: 1px solid var(--line); margin-bottom: 26px; }
 
   .about-actions {
     display: flex;
@@ -151,18 +132,6 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-  }
-  .inline-more-link {
-    color: var(--teal);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-left: 4px;
-    white-space: nowrap;
-  }
-  .inline-more-link:hover {
-    color: var(--ink);
   }
 </style>
 <!-- share:start -->
@@ -187,87 +156,44 @@
 
 <header class="masthead" id="app-header"></header>
 
-<!-- CHANGED: max-width increased to 1100px for 3 columns -->
-<main style="max-width:1100px;">
+<main style="max-width:820px;">
   <h1 class="sr-only">About KYH — what it is and what it is not</h1>
   <section style="padding-top:8px;">
 
-    <div class="about-grid">
+    <div class="about-intro">
+      <h2 style="font-family:var(--serif);font-weight:400;font-size:clamp(26px,4vw,36px);margin:0 0 12px;line-height:1.2;">A private way to prepare for your doctor</h2>
+      <p>KYH turns your symptoms, routine and diet into questions worth asking. Your answers stay in your browser.</p>
+    </div>
 
-      <!-- What it is -->
+    <div class="about-grid">
       <div class="about-box is">
         <div class="caption-bar"><span>What it is</span></div>
         <div class="about-box-body">
-          <h2>Your health, in three dimensions</h2>
-          <p>
-            KYH helps you understand your own health across
-            <strong>Diet</strong>, <strong>Daily Routine</strong>, and
-            <strong>Diagnostics</strong>.
-          </p>
-          <p>
-            It organizes your details in a clear, insightful way so you can
-            take more informed decisions in partnership with a
-            qualified healthcare professional.
-          </p>
-          <p style="margin-bottom:0;">
-            You can expand your learning with AI prompts and curated videos
-            from popular, reputed sources.
-            <span id="more-is" style="display:none;"> Everything stays private: <strong>your answers never leave your browser</strong>, and we store nothing about you on any server. Only the learning videos come from YouTube, so YouTube can see which videos are shown. </span><a href="#" id="more-is-link" class="inline-more-link" role="button" aria-expanded="false" aria-controls="more-is">more&hellip;</a>
-          </p>
+          <p>A preparation tool across <strong>Diagnostics</strong>, <strong>Daily Routine</strong> and <strong>Diet</strong>, built to work alongside a qualified healthcare professional.</p>
         </div>
       </div>
 
-      <!-- What it is not -->
       <div class="about-box is-not">
         <div class="caption-bar"><span>What it is not</span></div>
         <div class="about-box-body">
-          <h2>Not advice. Not for special care.</h2>
-          <p>
-            It is <strong>not</strong> health advice of any kind. All
-            recommendations are exploratory and must not be taken literally
-            without explicit consultation with a healthcare professional.
-          </p>
-          <p style="margin-bottom:8px;">
-            It is <strong>not</strong> intended for special cases, including Pregnancy, Recent surgery or hospitalization, Food Allergies, new or worsening symptoms such as chest pain, fainting, blood in the stool or an unexplained lump, or any other special-care scenarios
-          </p>
-          <p style="margin-bottom:0; margin-top:10px;">
-            <span id="more-isnot" style="display:none;">If any of these apply, please work with your care team first. You can return when your situation is stable. </span><a href="#" id="more-isnot-link" class="inline-more-link" role="button" aria-expanded="false" aria-controls="more-isnot" style="margin-left:0;">more&hellip;</a>
-          </p>
+          <p>Not medical advice or a diagnosis. Treat every result as a list of questions for your doctor.</p>
+          <p style="margin-bottom:0;">Not for pregnancy, recent surgery or hospitalization, food allergies, or new or worsening symptoms such as chest pain, fainting, blood in the stool or an unexplained lump. If any apply, please see your care team first.</p>
         </div>
       </div>
-
-      <!-- Medical Sources -->
-      <div class="about-box is-clinical">
-        <div class="caption-bar"><span>Medical Sources</span></div>
-        <div class="about-box-body">
-          <h2>Peer-reviewed and curated data</h2>
-          <p>
-            To ensure the logic is medically sound,
-            KYH relies on peer-reviewed and globally recognized medical databases.
-          </p>
-          <p style="margin-bottom:0;">
-            The engine's logic is validated against the <strong>NIH</strong> Office of Dietary Supplements for verified deficiency symptoms,
-            <strong>The Merck Manual</strong> and <strong>Linus Pauling Institute</strong>
-            for nutritional research, <strong>ACSM &amp; APTA</strong> for movement guidelines, and
-            <strong>Mayo Clinic</strong> for foundational lifestyle protocols.
-            <span id="more-clinical" style="display:none;"> This evidence base helps you bring structured, clinically grounded questions to your healthcare provider. </span><a href="#" id="more-clinical-link" class="inline-more-link" role="button" aria-expanded="false" aria-controls="more-clinical">more&hellip;</a>
-          </p>
-        </div>
-      </div>
-
     </div>
 
-    <div class="about-ack">
-      <div class="check-field">
-        <input type="checkbox" id="ack-limitations">
-        <label for="ack-limitations">I am not in a special-care situation listed above, and I will treat all output as exploratory &mdash; not medical advice.</label>
-      </div>
-      <p id="ack-error" class="validation-msg" aria-live="polite"></p>
-    </div>
+    <details class="about-more">
+      <summary>Privacy</summary>
+      <p>Your answers never leave your browser and nothing about you is stored on a server. Only the learning videos come from YouTube, so YouTube can see which videos are shown.</p>
+    </details>
+    <details class="about-more">
+      <summary>Where the medical logic comes from</summary>
+      <p>The logic is checked against the <strong>NIH</strong> Office of Dietary Supplements for verified deficiency symptoms, <strong>The Merck Manual</strong> and <strong>Linus Pauling Institute</strong> for nutritional research, <strong>ACSM &amp; APTA</strong> for movement guidelines, and <strong>Mayo Clinic</strong> for foundational lifestyle protocols.</p>
+    </details>
 
     <div class="about-actions">
       <a href="index.html" class="btn secondary">← Back</a>
-      <button type="button" class="btn" id="btn-continue" disabled>Continue to Profile →</button>
+      <a href="profile.html" class="btn" id="btn-continue">Continue to Profile →</a>
     </div>
 
   </section>
@@ -279,58 +205,8 @@
 <script src="shared/vault.js?v=20261113-9dedb40"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  renderHeader('fine', 'Before you begin-About this tool');
+  renderHeader('fine', 'About KYH');
   renderFooter();
-
-  function setupInlineMore(linkId, contentId) {
-    const link = document.getElementById(linkId);
-    const content = document.getElementById(contentId);
-    if (!link || !content) return;
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const isExpanded = link.getAttribute('aria-expanded') === 'true';
-      if (isExpanded) {
-        content.style.display = 'none';
-        link.setAttribute('aria-expanded', 'false');
-        link.innerHTML = 'more&hellip;';
-      } else {
-        content.style.display = 'inline';
-        link.setAttribute('aria-expanded', 'true');
-        link.textContent = 'less';
-      }
-    });
-  }
-
-  setupInlineMore('more-is-link', 'more-is');
-  setupInlineMore('more-isnot-link', 'more-isnot');
-  setupInlineMore('more-clinical-link', 'more-clinical');
-
-  const cb = document.getElementById('ack-limitations');
-  const btn = document.getElementById('btn-continue');
-  const err = document.getElementById('ack-error');
-
-  cb.addEventListener('change', () => {
-    btn.disabled = !cb.checked;
-    if (cb.checked) err.textContent = '';
-  });
-
- btn.addEventListener('click', () => {
-  if (!cb.checked) {
-    err.textContent = 'Please confirm you understand the limitations before continuing.';
-    return;
-  }
-
-  const state = loadState();
-  const next = Object.assign({}, state, {
-    acknowledgedLimitations: true,
-    // so older profile logic / any remaining references stay safe
-    profile: Object.assign({}, state.profile || {}, {
-      medicalStatus: 'stable'
-    })
-  });
-  persistState(next);
-  goTo('profile.html', next);
- });
 });
 </script>
 </body>
