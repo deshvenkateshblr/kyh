@@ -581,7 +581,7 @@ const KYH_BRAND_BLURB =
         id: 'calorie-burn', domain: 'routine', tone: 'good',
         priority: 16,
         title: 'Your estimated daily energy use',
-        detail: `Roughly ~${burn.toLocaleString()} kcal a day, based on your routine, age and body size. This is an estimate, not a target.`,
+        detail: `Roughly ~${burn.toLocaleString()} kcal a day, based on your routine, age and ${bodySizeAssumed(profile) ? 'a typical body size (you have not added your height and weight)' : 'body size'}. This is an estimate, not a target.`,
         next: '',
         sources: ['routine.estimatedCalories', 'routine.activities', 'weightKg']
       }));

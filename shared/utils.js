@@ -322,6 +322,21 @@ function pickBestRow(rows, sex, crit) {
 function computeBMI(weightKg, heightCm) { return weightKg / Math.pow(heightCm / 100, 2); }
 function computeWHtR(waistCm, heightCm) { return waistCm / heightCm; }
 
+/* Height and weight are optional on the profile. Without them, energy, calorie and water figures use a typical
+   body size (70 kg, 168 cm). Every place that shows such a figure must say so, so nobody reads a typical-body
+   number as their own. */
+const TYPICAL_BODY_TEXT = 'a typical body size (70 kg, 168 cm)';
+function bodySizeAssumed(profile) {
+  return !(Number(profile && profile.weightKg) > 0 && Number(profile && profile.heightCm) > 0);
+}
+function bodySizeNoticeHtml(profile, returnPage) {
+  if (!bodySizeAssumed(profile)) return '';
+  return '<div class="note-block" style="margin-bottom:22px;font-size:13.5px;line-height:1.6;" role="note">' +
+    '<span class="k">Typical body size used</span> ' +
+    'Energy and calorie figures here use ' + TYPICAL_BODY_TEXT + ' because you have not added your height and weight. ' +
+    '<a href="profile.html#refine&amp;next=' + (returnPage || 'diagnostics.html') + '">Add them</a> to make the numbers yours.</div>';
+}
+
 /** Default on: this app is built for India. Uncheck for generic WHO adult cutoffs. */
 function usesIndiaCutoffs(profile) {
   if (profile && profile.adjustForIndia === false) return false;

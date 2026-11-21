@@ -5,8 +5,9 @@ KYH is a browser-only, privacy-first self-assessment app. Users move through a g
 ## User flow
 
 ```
-index → profile → symptoms → diagnostics → routine (+ exercise plan) → diet (+ diet targets) → summary → nextsteps
-         └─ "Skip symptoms, show my tests" goes from profile straight to diagnostics
+index → profile (sex + age) → diagnostics (starter list) → routine (+ exercise plan) → diet (+ diet targets) → summary → nextsteps
+         └─ diagnostics offers "Refine my list" (profile.html#refine: height + weight for BMI, dietary preference, optional detail)
+         └─ diagnostics also offers "add symptoms" (symptoms.html, which returns to diagnostics)
          └─ routine and diet can each be skipped as a whole
                    └──(pregnancy / special-care)──→ not-ready
 ```
@@ -17,10 +18,10 @@ index → profile → symptoms → diagnostics → routine (+ exercise plan) →
 |---|------|------|--------------|
 | 1 | `index.html` | Landing | Pitch, privacy badge, "Start Assessment" CTA, collapsible walkthrough video, three outcome cards (Decode / Optimize / Take Action). |
 | 2 | `about.html` | Intro | Short optional read: what KYH is, what it is not, privacy and sources. No acknowledgement checkbox. The home page and profile page link past it. |
-| 3 | `profile.html` | Fine | "About You" form. Required: sex, age, height, weight (and menstrual / menopause status for women, which is the pregnancy check). Optional: dietary preference, and under "Add more detail" waist, waist-to-height gauge, India cutoffs toggle, smoking, alcohol, PCOS, cuisine and family history. Blank optional fields are stored as null. "Skip symptoms, show my tests" goes straight to diagnostics. Optional session memory toggle. Screens out special-care cases. |
+| 3 | `profile.html` | Fine | Two modes. **Quick** (first visit): sex and age only (plus menstrual / menopause status for women, the pregnancy check), then straight to the tests. **Refine** (`#refine`, optional `&next=<page>` to return to Routine or Diet): height and weight (BMI, entered as a pair), dietary preference, and under "Add more detail" waist, waist-to-height gauge, India cutoffs toggle, smoking, alcohol, PCOS, cuisine, family history. Blank optional fields are stored as null; quick mode never overwrites details saved earlier. |
 | 4 | `not-ready.html` | Safety exit | Shown for pregnancy or other special-care status. Pauses the flow and points to a clinician. Link back to profile. |
 | 5 | `symptoms.html` | Fine | Searchable, categorised symptom and known-condition picker, plus optional vitals (fasting glucose, resting heart rate). Shapes every later recommendation. |
-| 6 | `diagnostics.html` | Diagnostics | Ranked **top 10 lab tests** for the person's age, sex, risk profile and symptoms. Per-test last-done recency and optional self-reported result (within range / flagged / not sure). |
+| 6 | `diagnostics.html` | Diagnostics | Ranked **top 10 lab tests**. First shown from age and sex alone; BMI (via the Metabolic risk group) and dietary preference (B12 and iron checks) sharpen it through the "Refine this list" card; symptoms sharpen it further. Per-test last-done recency and optional self-reported result (within range / flagged / not sure). |
 | 7 | `routine.html` | Routine | One-page guided questions about a typical day, in the app's own chips and cards: sleep, work and daytime (choose all that apply: desk, on feet, physical, looking after children or family), home and free time (cooking, chores, relaxing), getting around, walking, then mind-body, gym and sport as days a week × minutes. Activities are grouped by similar effort. Unasked time counts as light activity (1.5 METs). Also steps, daylight, dinner-to-sleep gap, post-meal walk. Estimates daily energy use (TDEE). Nothing is pre-filled. |
 | – | `routine-config.html` | (redirect) | Old second step; forwards to `routine.html` so existing links still work. |
 | – | `routine-plan.html` | (redirect) | Old exercises step; forwards to `routine.html#plan`. The ranked **top 10 exercises** (logic in `shared/movement-plan.js`) now open under the day builder on the Routine page. Answers are optional. |
@@ -52,3 +53,4 @@ index → profile → symptoms → diagnostics → routine (+ exercise plan) →
 - `index.html` links to `profile.html`; there is no direct entry to later steps (by design). The footer disclaimer repeats only on results pages (`renderFooter({ disclaimer: true })`).
 - `kyf_teaser.html` is an orphan page, and `data.routine.js` is empty.
 - Every step page falls back to an "We need your profile first" state if the profile is missing.
+- Height and weight are optional. When missing, energy, calorie and water figures use a typical body size (70 kg, 168 cm) and every place that shows such a figure says so (`bodySizeAssumed` / `bodySizeNoticeHtml` in `shared/utils.js`: Routine, Diet targets, insights, Doctor Brief).

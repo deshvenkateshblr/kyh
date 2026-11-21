@@ -90,24 +90,47 @@ def full_flow(page, base, problems):
     page.locator('a[href="profile.html"], a[href^="profile.html#"]').first.click()
     page.wait_for_url(re.compile(r'profile\.html'))
 
-    # --- profile
+    # --- profile: sex and age only (women are also asked the pregnancy question), then straight to tests
+    check(not page.locator('#f-height-cm').is_visible() and not page.locator('#f-diet-type').is_visible(), 'profile: first visit asks only for sex and age')
     page.select_option('#f-sex', 'Female')
     page.fill('#f-age', '52')
+    page.select_option('#f-repro-status', 'Post-menopausal')
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_url(re.compile(r'diagnostics\.html'))
+    check(True, 'profile: sex and age are enough, went straight to the tests')
+
+    # --- first list, from age and sex alone
+    page.wait_for_selector('.test-card')
+    check(page.locator('.test-card').count() > 0, 'tests: a starter list is shown from age and sex alone')
+    check('refine this list' in page.inner_text('main').lower(), 'tests: offers to refine with BMI and dietary preference')
+    starter = card_names(page)
+
+    # --- refine: height, weight (BMI), dietary preference and the optional detail
+    page.locator('a:has-text("Refine my list")').click()
+    page.wait_for_url(re.compile(r'profile\.html#refine'))
+    check(page.locator('#f-height-cm').is_visible() and page.locator('#f-diet-type').is_visible(), 'refine: height, weight and dietary preference are shown')
+    check(page.input_value('#f-age') == '52', 'refine: sex and age are kept')
     page.fill('#f-height-cm', '160')
     page.fill('#f-weight-kg', '70')
     page.evaluate("() => { document.getElementById('more-detail').open = true; }")
     page.fill('#f-waist-cm', '92')
     page.select_option('#f-smoking', 'Never')
     page.select_option('#f-alcohol', 'Occasional')
-    page.select_option('#f-repro-status', 'Post-menopausal')
     page.select_option('#f-diet-type', 'Vegetarian')
     page.evaluate("() => { const s = document.getElementById('f-cuisine-type'); if (s.options.length < 2) throw new Error('no cuisines'); }")
     page.select_option('#f-cuisine-type', index=1)
     page.locator('#profile-form button[type=submit]').click()
-    page.wait_for_url(re.compile(r'symptoms\.html'))
-    check(True, 'profile: form accepted, moved to symptoms')
+    page.wait_for_url(re.compile(r'diagnostics\.html'))
+    page.wait_for_selector('.test-card')
+    check('refined with' in page.inner_text('main').lower() and 'bmi' in page.inner_text('main').lower(), 'refine: the tests page shows what the list was refined with')
+    pr = state_of(page)['profile']
+    check(abs(pr['bmi'] - 27.3) < 0.2 and pr['dietType'] == 'Vegetarian', 'refine: BMI and dietary preference saved', pr.get('bmi'))
+    refined = card_names(page)
+    check(refined != starter, 'refine: BMI and diet change the list', (len(starter), len(refined)))
 
-    # --- symptoms
+    # --- symptoms, added from the tests page
+    page.locator('a:has-text("add symptoms")').first.click()
+    page.wait_for_url(re.compile(r'symptoms\.html'))
     for s in ('Back Pain', 'Fatigue', 'Insomnia'):
         page.fill('#symptom-input', s)
         page.locator(f'.browse-chip[data-s="{s}"]').first.click()
@@ -305,7 +328,7 @@ def save_and_open(browser, base):
 def hidden_unit_does_not_block(browser, base):
     print('\nProfile: a hidden unit box must not block Continue')
     page = browser.new_page(viewport={'width': 1000, 'height': 900})
-    page.goto(base + 'profile.html')
+    page.goto(base + 'profile.html#refine')
     page.evaluate("() => { document.getElementById('more-detail').open = true; }")
     for t in ('height-unit-toggle', 'weight-unit-toggle', 'waist-unit-toggle'):
         page.locator(f'#{t} [data-unit]:not(.active)').first.click()
@@ -318,7 +341,7 @@ def hidden_unit_does_not_block(browser, base):
     page.evaluate("() => { for (const id of ['f-waist-cm','f-height-cm','f-weight-kg']) { document.getElementById(id).value = id === 'f-waist-cm' ? '3' : (id === 'f-height-cm' ? '5' : '1'); } }")
     page.locator('#profile-form button[type=submit]').click()
     try:
-        page.wait_for_url(re.compile(r'symptoms\.html'), timeout=5000); ok = True
+        page.wait_for_url(re.compile(r'diagnostics\.html'), timeout=5000); ok = True
     except Exception:
         ok = False
     check(ok, 'profile: with inches and lb chosen, Continue goes on even if a hidden cm or kg box holds an old value', page.inner_text('#validation-msg') if not ok else '')
@@ -338,48 +361,76 @@ def lighter_start(browser, base):
     check(page.locator('#btn-continue').is_visible(), 'about: Continue is available straight away')
     check(len((page.inner_text('main') or '').split()) < 260, 'about: short enough to read in under a minute')
 
-    # profile: only sex, age, height, weight are needed
+    # profile: sex and age are all that is asked at first
     page.goto(base + 'profile.html')
-    check(not page.locator('#more-detail').evaluate('e => e.open'), 'profile: optional detail starts closed')
+    check(not page.locator('#body-section').is_visible() and not page.locator('#refine-extra').is_visible(), 'profile: height, weight and diet are not asked up front')
     page.select_option('#f-sex', 'Male'); page.fill('#f-age', '45')
-    page.fill('#f-height-cm', '172'); page.fill('#f-weight-kg', '80')
     page.locator('#profile-form button[type=submit]').click()
-    try:
-        page.wait_for_url(re.compile(r'symptoms\.html'), timeout=5000); ok = True
-    except Exception:
-        ok = False
-    check(ok, 'profile: four fields are enough to continue', page.inner_text('#validation-msg') if not ok else '')
-    pr = (state_of(page) or {}).get('profile', {})
-    check(pr.get('waistCm') is None and pr.get('whtr') is None, 'profile: blank waist is saved as nothing, not zero or NaN', pr)
-
-    # a woman is still asked the pregnancy question
-    page.goto(base + 'profile.html')
-    page.select_option('#f-sex', 'Female'); page.fill('#f-age', '33')
-    page.fill('#f-height-cm', '160'); page.fill('#f-weight-kg', '60')
-    page.locator('#profile-form button[type=submit]').click()
-    page.wait_for_timeout(400)
-    check('profile.html' in page.url and 'menstrual' in page.inner_text('#validation-msg').lower(), 'profile: women are still asked the pregnancy question first')
-
-    # out-of-range optional waist opens the detail section and says why
-    page.select_option('#f-repro-status', 'Regular cycle')
-    page.evaluate("() => { document.getElementById('f-waist-cm').value = '3'; }")
-    page.locator('#profile-form button[type=submit]').click()
-    page.wait_for_timeout(400)
-    check(page.locator('#more-detail').evaluate('e => e.open') and 'waist' in page.inner_text('#validation-msg').lower(), 'profile: a bad waist opens the detail section and explains')
-
-    # quick path: straight to tests, with nothing else filled in
-    page.goto(base + 'profile.html')
-    page.select_option('#f-sex', 'Male'); page.fill('#f-age', '52')
-    page.fill('#f-height-cm', '170'); page.fill('#f-weight-kg', '82')
-    page.locator('#btn-quick').click()
     try:
         page.wait_for_url(re.compile(r'diagnostics\.html'), timeout=5000); ok = True
     except Exception:
         ok = False
-    check(ok, 'quick path: four fields, then straight to the tests list')
+    check(ok, 'profile: sex and age are enough to see the first tests', page.inner_text('#validation-msg') if not ok else '')
     page.wait_for_selector('.test-card', timeout=8000)
-    check(page.locator('.test-card').count() > 0, 'quick path: a starter list of tests is shown')
-    check('starter list' in page.inner_text('main').lower(), 'quick path: the list is framed as a usable starter result')
+    check('starter list' in page.inner_text('main').lower(), 'tests: the first list is framed as a usable starter result')
+    pr = (state_of(page) or {}).get('profile', {})
+    check(not pr.get('heightCm') and pr.get('bmi') is None, 'profile: no height, weight or BMI is invented', pr)
+
+    # a woman is still asked the pregnancy question first
+    page.goto(base + 'profile.html')
+    page.select_option('#f-sex', 'Female'); page.fill('#f-age', '33')
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_timeout(400)
+    check('profile.html' in page.url and 'menstrual' in page.inner_text('#validation-msg').lower(), 'profile: women are still asked the pregnancy question first')
+
+    # refine mode rules
+    page.goto(base + 'profile.html#refine')
+    page.wait_for_timeout(300)
+    page.select_option('#f-sex', 'Male'); page.fill('#f-age', '45')
+    page.fill('#f-height-cm', '172')
+    page.locator('#profile-form button[type=submit]').click(); page.wait_for_timeout(300)
+    check('both height and weight' in page.inner_text('#validation-msg').lower(), 'refine: height without weight is explained')
+    page.fill('#f-weight-kg', '82')
+    page.evaluate("() => { document.getElementById('f-waist-cm').value = '3'; }")
+    page.locator('#profile-form button[type=submit]').click(); page.wait_for_timeout(300)
+    check(page.locator('#more-detail').evaluate('e => e.open') and 'waist' in page.inner_text('#validation-msg').lower(), 'refine: a bad waist opens the detail section and explains')
+    page.evaluate("() => { document.getElementById('f-waist-cm').value = ''; }")
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_url(re.compile(r'diagnostics\.html'), timeout=5000)
+    pr = (state_of(page) or {}).get('profile', {})
+    check(abs(pr.get('bmi', 0) - 27.7) < 0.2 and pr.get('waistCm') is None and pr.get('whtr') is None, 'refine: BMI saved, blank waist stays empty', pr.get('bmi'))
+
+    # quick mode never wipes details entered earlier
+    inject(page, base, {'profile': {'sex': 'Male', 'age': 45, 'dietType': 'Vegan', 'symptoms': ['Fatigue'], 'medicalStatus': 'stable'}, 'vitals': {}, 'diagnostics': {}}, 'profile.html')
+    page.select_option('#f-sex', 'Male'); page.fill('#f-age', '46')
+    page.locator('#profile-form button[type=submit]').click()
+    page.wait_for_url(re.compile(r'diagnostics\.html'), timeout=5000)
+    pr = (state_of(page) or {}).get('profile', {})
+    check(pr.get('age') == 46 and pr.get('dietType') == 'Vegan' and pr.get('symptoms') == ['Fatigue'], 'profile: changing age keeps diet and symptoms already saved', pr)
+
+    # a refine started from Routine returns to Routine
+    inject(page, base, {'profile': {'sex': 'Male', 'age': 45, 'symptoms': [], 'medicalStatus': 'stable'}, 'vitals': {}, 'diagnostics': {}}, 'routine.html')
+    page.wait_for_selector('#continue-btn')
+    check('typical body size' in page.inner_text('main').lower(), 'routine: says a typical body size is used when height and weight are missing')
+    page.locator('main a:has-text("Add them")').first.click()
+    page.wait_for_url(re.compile(r'profile\.html#refine'))
+    page.fill('#f-height-cm', '172'); page.fill('#f-weight-kg', '82')
+    page.locator('#profile-form button[type=submit]').click()
+    try:
+        page.wait_for_url(re.compile(r'routine\.html'), timeout=5000); ok = True
+    except Exception:
+        ok = False
+    check(ok, 'refine from Routine: returns to Routine afterwards')
+    page.wait_for_selector('#continue-btn')
+    check('typical body size' not in page.inner_text('main').lower(), 'routine: the notice is gone once height and weight are added')
+
+    # the diet page and its targets are honest about it too
+    inject(page, base, {'profile': {'sex': 'Male', 'age': 45, 'dietType': 'Vegetarian', 'symptoms': [], 'medicalStatus': 'stable'}, 'vitals': {}, 'diagnostics': {}}, 'diet.html')
+    page.wait_for_selector('#continue-btn')
+    check('typical body size' in page.inner_text('main').lower(), 'diet: says a typical body size is used when height and weight are missing')
+    page.locator('#continue-btn').click()
+    page.wait_for_selector('#diet-targets .stat-card')
+    check('typical body size' in page.inner_text('#diet-targets').lower(), 'diet targets: explain that a typical body size was used')
 
     # diet page asks for its own preference instead of sending people back
     page.goto(base + 'diet.html')
@@ -444,7 +495,7 @@ def status_bar(browser, base):
         info = page.evaluate("""() => { const b = document.getElementById('kyh-statusbar'); if (!b) return null;
             const r = b.getBoundingClientRect(), cs = getComputedStyle(b);
             return { pos: cs.position, h: Math.round(r.height), bottom: Math.round(innerHeight - r.bottom), wrap: b.scrollWidth <= b.clientWidth + 1,
-                     txt: b.innerText.replace(/[ \t\n]+/g, ' '), n: document.querySelectorAll('#kyh-statusbar').length,
+                     txt: b.innerText.replace(/\\s+/g, ' '), n: document.querySelectorAll('#kyh-statusbar').length,
                      src: (document.querySelector('script[src*="statusbar.js"]') || {}).getAttribute && document.querySelector('script[src*="statusbar.js"]').getAttribute('src') }; }""")
         ver = (info or {}).get('src', '') and info['src'].split('v=')[-1]
         if not info or info['pos'] != 'fixed' or info['h'] > 36 or info['bottom'] != 0 or not info['wrap'] or info['n'] != 1 or ('v' + ver) not in info['txt'] \

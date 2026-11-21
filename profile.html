@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <title>Start your KYH health self-check — About you</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-95d40c9">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-af80352">
 <style>
 .scope-panel { text-align:center; padding:40px 20px; max-width:700px; margin:0 auto; }
 #scope-title:focus { outline: none; }
@@ -26,7 +26,7 @@
 <!-- share:start -->
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://vividnova.com/3DHealth/profile.html">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-95d40c9">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-af80352">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -34,7 +34,7 @@
 <meta property="og:title" content="Start your KYH health self-check — About you">
 <meta property="og:description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/profile.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-95d40c9">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-af80352">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -104,7 +104,11 @@
 <main id="profile-main">
   <form id="profile-form" novalidate>
 
-    <p class="lede" style="font-size:13.5px; margin:0 0 22px;">
+    <p class="lede" id="refine-intro" style="display:none; font-size:15px; margin:0 0 22px;">
+      <b>Refine your list.</b> Your starter tests are based on your age and sex. Add what you know and the list is sharpened.
+      Every field here is optional, and height and weight go together (they give your BMI).
+    </p>
+    <p class="lede" id="quick-intro" style="font-size:13.5px; margin:0 0 22px;">
       KYH helps you prepare questions for your doctor. It is not medical advice, and it is not for pregnancy, recent surgery, food allergies or new warning symptoms such as chest pain. <a href="about.html">Details</a>
     </p>
 
@@ -119,6 +123,7 @@
       </div>
     </div>
 
+<div id="body-section" style="display:none;">
 <div class="field-row" style="margin-bottom:8px;">
 
       <!-- HEIGHT GROUP -->
@@ -163,6 +168,7 @@
         <div class="badge-text"><b>Body Mass Index</b><span id="bmi-tag-text"></span></div>
       </div>
     </div>
+    </div>
 
     <div class="cat-title" id="repro-title" style="display:none;">Reproductive health</div>
     <div class="field-row" id="repro-field-row" style="display:none; margin-bottom:22px;">
@@ -188,6 +194,7 @@
       </div>
     </div>
 
+<div id="refine-extra" style="display:none;">
     <div class="field-row" style="margin-bottom:22px;">
       <div class="field">
         <label class="intake-label" for="f-diet-type">Dietary preference <span style="font-weight:400;opacity:.7;">(optional &mdash; helps match B12 and iron tests)</span></label>
@@ -294,19 +301,20 @@
 
       </div>
     </details>
+    </div>
 
     <div class="page-footer-nav">
       <span id="validation-msg" class="validation-msg" aria-live="polite"></span>
-      <button type="button" class="btn secondary" id="btn-quick">Skip symptoms, show my tests &rarr;</button>
-      <button type="submit" class="btn">Continue to Symptoms &rarr;</button>
+      <a href="diagnostics.html" class="btn secondary" id="btn-back-list" style="display:none;">&larr; Back to my list</a>
+      <button type="submit" class="btn" id="btn-submit">Show my tests &rarr;</button>
     </div>
   </form>
 </main>
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261121-95d40c9"></script>
-<script src="shared/vault.js?v=20261121-95d40c9"></script>
+<script src="shared/utils.js?v=20261121-af80352"></script>
+<script src="shared/vault.js?v=20261121-af80352"></script>
 <script>
 renderHeader('fine', 'KYH - Profile');
 renderFooter();
@@ -345,6 +353,27 @@ if (p.cuisine || (state.diet && state.diet.cuisine)) {
 }
 
 
+
+/* ---- two modes ----
+   Quick (first visit): sex and age only, then straight to a starter list of tests.
+   Refine (from the tests page, #refine): height + weight (BMI), dietary preference and the optional detail.
+   A person who has already added body details lands in refine mode so nothing they entered is hidden.
+   The hash may carry next=<page> so a refine started from Routine or Diet returns there. */
+const RETURN_PAGES = ['diagnostics.html', 'routine.html', 'diet.html', 'summary.html'];
+const refineMode = /(^|[#&])refine(&|$)/.test(location.hash) || !!(p.heightCm || p.weightKg);
+const nextMatch = /[#&]next=([a-z-]+\.html)/.exec(location.hash);
+const returnPage = nextMatch && RETURN_PAGES.indexOf(nextMatch[1]) !== -1 ? nextMatch[1] : 'diagnostics.html';
+function applyMode() {
+  const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
+  show('body-section', refineMode);
+  show('refine-extra', refineMode);
+  show('refine-intro', refineMode);
+  show('quick-intro', !refineMode);
+  show('btn-back-list', refineMode);
+  document.getElementById('btn-back-list').setAttribute('href', returnPage);
+  document.getElementById('btn-submit').textContent = refineMode ? 'Update my list \u2192' : 'Show my tests \u2192';
+  if (refineMode) refreshMetrics();
+}
 
 /* ---- in-page scope pause (adults only; not while pregnant) ----
    Same messaging as not-ready.html, shown right here instead of navigating away.
@@ -571,52 +600,26 @@ refreshMetrics();
 
 
 /* ---- submit ----
-   Required: sex, age, height, weight (and menstrual / menopause status for women, which is the pregnancy check).
-   Everything else is optional. A blank optional field is saved as null / '' so no result is built on a guess. */
-function submitProfile(target) {
+   Always required: sex and age (and menstrual / menopause status for women, which is the pregnancy check).
+   Refine mode adds optional fields; height and weight must come as a pair. A blank optional field is saved as
+   null / '' so no result is built on a guess. Fields that are not on screen are never overwritten. */
+function submitProfile() {
   const sex = document.getElementById('f-sex').value;
   const age = parseFloat(document.getElementById('f-age').value);
-  const heightCm = getHeightCm(), weightKg = getWeightKg();
-  const waistRaw = getWaistCm();
-  const waistCm = (!isNaN(waistRaw) && waistRaw > 0) ? waistRaw : null;
-  const smoking = normalizeLifestyle(document.getElementById('f-smoking').value);
-  const alcohol = normalizeLifestyle(document.getElementById('f-alcohol').value);
   const reproStatus = document.getElementById('f-repro-status').value;
-  const dietType = document.getElementById('f-diet-type').value;
-  const cuisine = document.getElementById('f-cuisine-type').value;
-
   const medicalStatus = (state.profile && state.profile.medicalStatus) || 'stable';
   const msg = document.getElementById('validation-msg');
   const details = document.getElementById('more-detail');
 
   if (checkAgeScope() || checkPregnancyScope()) return;
 
-  if (!sex || isNaN(age) || age <= 0 || isNaN(heightCm) || heightCm <= 0 || isNaN(weightKg) || weightKg <= 0) {
-    msg.textContent = 'Please enter your sex, age, height and weight to continue.';
+  if (!sex || isNaN(age) || age <= 0) {
+    msg.textContent = 'Please enter your sex and age to continue.';
     return;
   }
-
-  // ---- Explicit bounds check (the form is novalidate, so this is the only check) ----
   const AGE_MIN = 1, AGE_MAX = 100;
-  const HEIGHT_CM_MIN = 120, HEIGHT_CM_MAX = 230;
-  const WEIGHT_KG_MIN = 30, WEIGHT_KG_MAX = 250;
-  const WAIST_CM_MIN = 50, WAIST_CM_MAX = 200;
-
   if (age < AGE_MIN || age > AGE_MAX) {
     msg.textContent = `Age looks out of range — please enter a value between ${AGE_MIN} and ${AGE_MAX}.`;
-    return;
-  }
-  if (heightCm < HEIGHT_CM_MIN || heightCm > HEIGHT_CM_MAX) {
-    msg.textContent = `Height looks out of range — please enter a value between ${HEIGHT_CM_MIN}cm and ${HEIGHT_CM_MAX}cm (about ${cmToFtIn(HEIGHT_CM_MIN).ft}'${cmToFtIn(HEIGHT_CM_MIN).inch}" to ${cmToFtIn(HEIGHT_CM_MAX).ft}'${cmToFtIn(HEIGHT_CM_MAX).inch}").`;
-    return;
-  }
-  if (weightKg < WEIGHT_KG_MIN || weightKg > WEIGHT_KG_MAX) {
-    msg.textContent = `Weight looks out of range — please enter a value between ${WEIGHT_KG_MIN}kg and ${WEIGHT_KG_MAX}kg.`;
-    return;
-  }
-  if (waistCm !== null && (waistCm < WAIST_CM_MIN || waistCm > WAIST_CM_MAX)) {
-    if (details) details.open = true;
-    msg.textContent = `Waist looks out of range — please enter a value between ${WAIST_CM_MIN}cm and ${WAIST_CM_MAX}cm, or leave it blank.`;
     return;
   }
   if (sex === 'Female' && !reproStatus) {
@@ -624,20 +627,59 @@ function submitProfile(target) {
     return;
   }
 
-  const bmi = computeBMI(weightKg, heightCm);
-  const whtr = waistCm !== null ? computeWHtR(waistCm, heightCm) : null;
-  const profile = {
-    sex, age, heightCm, weightKg, waistCm, bmi, whtr,
-    famMetabolic: document.getElementById('f-fam-metabolic').checked,
-    famCardio: document.getElementById('f-fam-cardio').checked,
-    smoking, alcohol,
-    reproStatus: sex === 'Female' ? reproStatus : null,
-    pcos: sex === 'Female' ? document.getElementById('f-pcos').checked : false,
-    dietType, cuisine,
-    adjustForIndia: document.getElementById('f-adjust-india').checked,
-    medicalStatus,
-    symptoms: p.symptoms || []
-  };
+  // Start from what is already saved, then set only what this mode showed.
+  const profile = Object.assign({ symptoms: [] }, state.profile || {});
+  profile.sex = sex;
+  profile.age = age;
+  profile.reproStatus = sex === 'Female' ? reproStatus : null;
+  profile.pcos = sex === 'Female' ? document.getElementById('f-pcos').checked : false;
+  profile.medicalStatus = medicalStatus;
+
+  if (refineMode) {
+    const hRaw = getHeightCm(), wRaw = getWeightKg(), waistRaw = getWaistCm();
+    const hasH = !isNaN(hRaw) && hRaw > 0, hasW = !isNaN(wRaw) && wRaw > 0;
+    const waistCm = (!isNaN(waistRaw) && waistRaw > 0) ? waistRaw : null;
+
+    const HEIGHT_CM_MIN = 120, HEIGHT_CM_MAX = 230;
+    const WEIGHT_KG_MIN = 30, WEIGHT_KG_MAX = 250;
+    const WAIST_CM_MIN = 50, WAIST_CM_MAX = 200;
+
+    if (hasH !== hasW) {
+      msg.textContent = 'Please enter both height and weight (together they give your BMI), or leave both blank.';
+      return;
+    }
+    if (hasH && (hRaw < HEIGHT_CM_MIN || hRaw > HEIGHT_CM_MAX)) {
+      msg.textContent = `Height looks out of range — please enter a value between ${HEIGHT_CM_MIN}cm and ${HEIGHT_CM_MAX}cm (about ${cmToFtIn(HEIGHT_CM_MIN).ft}'${cmToFtIn(HEIGHT_CM_MIN).inch}" to ${cmToFtIn(HEIGHT_CM_MAX).ft}'${cmToFtIn(HEIGHT_CM_MAX).inch}").`;
+      return;
+    }
+    if (hasW && (wRaw < WEIGHT_KG_MIN || wRaw > WEIGHT_KG_MAX)) {
+      msg.textContent = `Weight looks out of range — please enter a value between ${WEIGHT_KG_MIN}kg and ${WEIGHT_KG_MAX}kg.`;
+      return;
+    }
+    if (waistCm !== null && (waistCm < WAIST_CM_MIN || waistCm > WAIST_CM_MAX)) {
+      if (details) details.open = true;
+      msg.textContent = `Waist looks out of range — please enter a value between ${WAIST_CM_MIN}cm and ${WAIST_CM_MAX}cm, or leave it blank.`;
+      return;
+    }
+    if (waistCm !== null && !hasH) {
+      if (details) details.open = true;
+      msg.textContent = 'Waist needs your height too (it is compared with height). Please add height and weight, or clear the waist.';
+      return;
+    }
+
+    profile.heightCm = hasH ? hRaw : null;
+    profile.weightKg = hasW ? wRaw : null;
+    profile.bmi = hasH && hasW ? computeBMI(wRaw, hRaw) : null;
+    profile.waistCm = waistCm;
+    profile.whtr = waistCm !== null ? computeWHtR(waistCm, hRaw) : null;
+    profile.famMetabolic = document.getElementById('f-fam-metabolic').checked;
+    profile.famCardio = document.getElementById('f-fam-cardio').checked;
+    profile.smoking = normalizeLifestyle(document.getElementById('f-smoking').value);
+    profile.alcohol = normalizeLifestyle(document.getElementById('f-alcohol').value);
+    profile.dietType = document.getElementById('f-diet-type').value;
+    profile.cuisine = document.getElementById('f-cuisine-type').value;
+    profile.adjustForIndia = document.getElementById('f-adjust-india').checked;
+  }
 
   // ---- BAILOUT CONDITIONS CHECK ON SUBMIT ----
   let bailoutReason = null;
@@ -652,17 +694,19 @@ function submitProfile(target) {
   }
 
   msg.textContent = '';
-  goTo(target, Object.assign({}, state, { profile }));
+  goTo(refineMode ? returnPage : 'diagnostics.html', Object.assign({}, state, { profile }));
 }
 
 document.getElementById('profile-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  submitProfile('symptoms.html');
+  submitProfile();
 });
-/* Quick path: straight to the tests list. Symptoms can still be added later from there. */
-document.getElementById('btn-quick').addEventListener('click', () => submitProfile('diagnostics.html'));
-</script>
 
-<script src="shared/statusbar.js?v=20261121-95d40c9"></script>
+/* Set the mode last, once every variable the form code uses has been declared. */
+applyMode();
+/* Same page, different mode (e.g. #refine typed or pasted): start over cleanly in that mode. */
+window.addEventListener('hashchange', () => location.reload());
+</script>
+<script src="shared/statusbar.js?v=20261121-af80352"></script>
 </body>
 </html>

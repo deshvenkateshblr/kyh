@@ -195,7 +195,7 @@
     const burn = assumedWeek ? 0 : (Number(routine.estimatedCalories) || 0);
     let band = null;
     if (burn && global.KYHInsights && global.KYHInsights.activityBandFromBurn) band = global.KYHInsights.activityBandFromBurn(burn);
-    return { items, burn, band, dayParts, activeList, weekTotal, habits, hasActivities: acts.length > 0, assumedWeek };
+    return { items, burn, band, dayParts, activeList, weekTotal, habits, hasActivities: acts.length > 0, assumedWeek, bodyAssumed: bodySizeAssumed(state.profile) };
   }
 
   const MEET_LABEL = { yes: 'Meeting', partial: 'Partly', no: 'Not meeting' };
@@ -249,7 +249,7 @@
     fq.forEach(f => { const v = freq[f.id]; if (v) (byFreq[v] = byFreq[v] || []).push(lowerFirst(f.label)); });
     const patternParts = FREQ_ORDER.filter(k => byFreq[k]).map(k => FREQ_LABEL[k] + ': ' + byFreq[k].join(', '));
 
-    return { items, limits, cal, burn, pref, nutrientParts, patternParts };
+    return { items, limits, cal, burn, pref, nutrientParts, patternParts, bodyAssumed: bodySizeAssumed(profile) };
   }
 
   function aboutBlock(state) {
@@ -351,7 +351,7 @@
       : '<li class="db-muted">Exercise step not completed.</li>';
     const tdee = r.burn
       ? '<div class="db-stat"><div class="db-stat-ic">' + ICON.bolt + '</div><div><div class="db-stat-val">~' + r.burn.toLocaleString() + ' kcal/day</div>'
-        + '<div class="db-stat-lbl">Estimated daily energy use (TDEE)' + (r.band ? ' \u00b7 ' + esc(r.band.label) : '') + '</div></div></div>'
+        + '<div class="db-stat-lbl">Estimated daily energy use (TDEE)' + (r.band ? ' \u00b7 ' + esc(r.band.label) : '') + (r.bodyAssumed ? ' \u00b7 typical body size assumed' : '') + '</div></div></div>'
       : '';
     const summary = r.hasActivities
       ? kv('Typical day:', r.dayParts.join(' \u00b7 '))
@@ -373,7 +373,7 @@
       : '<li class="db-muted">Diet step not completed.</li>';
     const target = d.cal
       ? '<div class="db-stat"><div class="db-stat-ic">' + ICON.bolt + '</div><div><div class="db-stat-val">~' + d.cal.toLocaleString() + ' kcal/day</div>'
-        + '<div class="db-stat-lbl">Suggested intake to discuss' + (d.burn ? ' (estimated burn ~' + d.burn.toLocaleString() + ')' : '') + '</div></div></div>'
+        + '<div class="db-stat-lbl">Suggested intake to discuss' + (d.burn ? ' (estimated burn ~' + d.burn.toLocaleString() + ')' : '') + (d.bodyAssumed ? ' \u00b7 typical body size assumed' : '') + '</div></div></div>'
       : '';
     const limitHtml = d.limits.length ? '<div class="db-limit-wrap">' + d.limits.map(l =>
       '<div class="db-limit"><span class="db-badge db-cut">Cut back</span> <b>' + esc(l.name) + '</b>'

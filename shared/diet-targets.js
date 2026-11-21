@@ -193,6 +193,7 @@ function factorLabel(f) {
         <span class="k">How intake is calculated</span>
         <p style="margin:8px 0 0 0; line-height:1.6;">
             ${burnAssumed ? 'You have not confirmed your daily routine, so burn is assumed from your age, sex, height and weight for a lightly active day. Confirm your routine to make this personal.' : 'Estimated burn from your routine (your resting energy scaled by how active each part of your day is).'}
+            ${bodySizeAssumed(profile) ? `Height and weight were not added, so ${TYPICAL_BODY_TEXT} is used for burn, calories and water. <a href="profile.html#refine&next=diet.html">Add them</a> for a personal figure. ` : ''}
             Intake target = burn × <strong>${factor}</strong>
             (${factorLabel(factor)}), using BMI${(Number(profile.whtr) >= 0.5) ? ' and waist-to-height ratio' : ''}.
         </p>

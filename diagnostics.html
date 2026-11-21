@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-95d40c9">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-af80352">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-95d40c9">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-af80352">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +16,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-95d40c9">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-af80352">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -34,9 +34,9 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-95d40c9"></script>
-<script src="shared/utils.js?v=20261121-95d40c9"></script>
-<script src="shared/vault.js?v=20261121-95d40c9"></script>
+<script src="shared/data.diagnostics.js?v=20261121-af80352"></script>
+<script src="shared/utils.js?v=20261121-af80352"></script>
+<script src="shared/vault.js?v=20261121-af80352"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -399,7 +399,7 @@ function renderResultsStage(){
 
   let symptomLine;
   if (!symptoms.length) {
-    symptomLine = `Your starter list, based on your age, sex and body profile. Take it to your doctor as it is, or <a href="symptoms.html">add symptoms to sharpen it &rarr;</a>`;
+    symptomLine = `Your starter list, based on your age and sex. Take it to your doctor as it is, or <a href="symptoms.html">add symptoms to sharpen it &rarr;</a>`;
   } else {
     const basedOnText = matchedSymptomsList.length
       ? `Based on: ${matchedSymptomsList.map(esc).join(', ')}`
@@ -410,11 +410,30 @@ function renderResultsStage(){
     symptomLine = `${basedOnText}${unmatchedNote} &middot; <a href="symptoms.html">adjust on your symptoms &rarr;</a>`;
   }
 
+  // Refine card: the list starts from age and sex; BMI and dietary preference sharpen it.
+  const hasBody = !!(profile.heightCm && profile.weightKg && profile.bmi);
+  const hasDiet = !!profile.dietType;
+  let refineHtml;
+  if (hasBody && hasDiet) {
+    refineHtml = `<div class="note-block" style="margin-bottom:22px;">
+      <span class="k">Refined with</span> BMI ${esc(fmtNum(Number(profile.bmi)))} &middot; ${esc(profile.dietType)} diet
+      &middot; <a href="profile.html#refine">Edit &rarr;</a></div>`;
+  } else {
+    const ask = [!hasBody ? 'your height and weight (for BMI)' : null, !hasDiet ? 'your dietary preference' : null].filter(Boolean).join(' and ');
+    const why = [!hasBody ? 'BMI decides whether metabolic tests, such as blood sugar, are on your list' : null,
+                 !hasDiet ? 'a vegetarian, vegan or Jain diet adds B12 and iron checks' : null].filter(Boolean).join('; ');
+    refineHtml = `<div class="note-block" style="margin-bottom:22px;">
+      <span class="k">Refine this list</span>
+      <p style="margin:8px 0 12px;font-size:14.5px;line-height:1.6;">Add ${ask}. ${why.charAt(0).toUpperCase() + why.slice(1)}. Takes under a minute, and everything is optional.</p>
+      <a href="profile.html#refine" class="btn secondary">Refine my list &rarr;</a></div>`;
+  }
+
   main.innerHTML = `
   <div class="section-head">
     <h2>${top10.length < 10 ? "Your matched tests" : "Your top 10 tests"}</h2>
   </div>
   <p class="lede">${symptomLine}</p>
+  ${refineHtml}
   <p class="section-sub" style="display:block;margin-bottom:14px;">${matches.length} tests matched your profile &middot; ${symptomDrivenCount} pulled in directly from your symptoms, the rest fill out your baseline risk panel</p>
   <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
     <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few tests unanswered</div>
@@ -430,7 +449,7 @@ function renderResultsStage(){
   </div>
   <div id="cards">${cardsHtml}</div>
   <div class="page-footer-nav">
-    <a href="symptoms.html" class="btn secondary">&larr; Back</a>
+    <a href="profile.html" class="btn secondary">&larr; Back</a>
     <span id="answer-counter" style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 14px;white-space:nowrap;"></span>
     <button class="btn" id="continue-btn">Continue to Routine &rarr;</button>
   </div>`;
@@ -541,6 +560,6 @@ if(!profile){
   renderResultsStage();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-95d40c9"></script>
+<script src="shared/statusbar.js?v=20261121-af80352"></script>
 </body>
 </html>
