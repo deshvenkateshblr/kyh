@@ -430,11 +430,14 @@ const KYH_BRAND_BLURB =
     const onTrackFlagged = [];
     const onTrackUnsure = [];
     const notLogged = [];
+    const setAside = [];
 
     top.forEach(t => {
       const name = t.test || t.name;
       const a = answers[name];
-      if (a && a.done === true) {
+      if (a && a.decision === 'skip') {
+        setAside.push(name);                     // the person chose not to pursue it
+      } else if (a && a.done === true) {
         if (a.resultStatus === 'Within range') onTrackInRange.push(name);
         else if (a.resultStatus === 'Flagged \u2014 needs attention') onTrackFlagged.push(name);
         else onTrackUnsure.push(name); // done, but "Not sure" or unspecified
@@ -455,7 +458,8 @@ const KYH_BRAND_BLURB =
       title: 'Screening coverage from your prioritised list',
       detail: `${top.length} tests matched your profile${bySym ? ` (${bySym} symptom-linked)` : ''}. ` +
         `Marked already done — ${doneSummary}. ` +
-        `Not yet logged: ${notLogged.length ? notLogged.slice(0, 6).join(', ') + (notLogged.length > 6 ? '…' : '') : 'none'}.`,
+        `Not yet logged: ${notLogged.length ? notLogged.slice(0, 6).join(', ') + (notLogged.length > 6 ? '…' : '') : 'none'}.` +
+        (setAside.length ? ` Set aside by you: ${setAside.join(', ')}.` : ''),
       next: onTrackFlagged.length
         ? `Flagged results worth discussing first: ${onTrackFlagged.join(', ')}.`
         : (belowTarget.length

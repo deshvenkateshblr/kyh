@@ -91,6 +91,7 @@
   function findExercise(name) { return (global.EXERCISES || []).find(e => e.exercise === name) || null; }
 
   function statusOf(answer) {
+    if (answer && answer.decision === 'skip') return 'skipped';
     if (answer && answer.done === true) {
       if (answer.resultStatus === RESULT_WITHIN)  return 'within';
       if (answer.resultStatus === RESULT_FLAGGED) return 'flagged';
@@ -118,11 +119,12 @@
         recency: ans.recency || ''
       };
     });
+    const setAside = rows.filter(r => r.status === 'skipped');
     const flagged = rows.filter(r => r.status === 'flagged');
     const within = rows.filter(r => r.status === 'within');
     const suggested = rows.filter(r => r.status === 'suggested');
     return {
-      rows, flagged, within, suggested,
+      rows: rows.filter(r => r.status !== 'skipped'), flagged, within, suggested, setAside,
       asks: suggested.slice(0, 3),        // tests worth asking about, in the app's priority order
       alsoOnList: suggested.slice(3),
       hasData: rows.length > 0
@@ -338,8 +340,9 @@
     const left = resultsHtml ? '<div>' + subhead('Results I\u2019ve already had') + resultsHtml + '</div>' : '';
     const right = asksHtml ? '<div>' + subhead('Would these tests be helpful for me?') + '<ol class="db-list">' + asksHtml + '</ol>' + alsoHtml + '</div>' : '';
     const cols = (left && right) ? ' db-cols-2' : '';
+    const asideHtml = (d.setAside && d.setAside.length) ? '<p class="db-muted" style="margin-top:10px;">Set aside by me: ' + esc(d.setAside.map(r => r.name).join(', ')) + '.</p>' : '';
     return '<section class="db-sec">' + sectionHead(ICON.flask, 'Tests & results', 'Self-reported \u2014 please check against my reports')
-      + '<div class="db-cols' + cols + '">' + (left || '') + (right || '') + (!left && !right ? '<p class="db-muted">Nothing to show.</p>' : '') + '</div></section>';
+      + '<div class="db-cols' + cols + '">' + (left || '') + (right || '') + (!left && !right ? '<p class="db-muted">Nothing to show.</p>' : '') + '</div>' + asideHtml + '</section>';
   }
 
   function renderRoutine(r) {

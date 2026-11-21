@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-ec99c75">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-d520df7">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -14,6 +14,17 @@
 .tp-pills { display:flex; flex-wrap:wrap; gap:4px; }
 .tp-pill { min-width:31px; height:31px; padding:0 4px; border:1px solid var(--line); background:#fff; color:var(--muted); font:12px var(--mono, monospace); border-radius:16px; cursor:pointer; }
 .tp-pill.done { background:var(--teal); border-color:var(--teal); color:#fff; }
+.tp-pill.later { background:var(--amber-soft, #fbeedc); border-color:var(--amber, #c9822b); color:#7a4a12; border-style:dashed; }
+.tp-pill.skip { background:#eceee9; color:#9aa39c; text-decoration:line-through; }
+.tp-chip { background:none; border:1px dashed var(--amber, #c9822b); color:#7a4a12; border-radius:12px; padding:3px 10px; font:12px var(--mono, monospace); cursor:pointer; }
+.result-row select, .result-row input { width:100%; max-width:100%; box-sizing:border-box; }
+.decide-row { display:flex; flex-wrap:wrap; gap:6px; }
+.decide-extra { margin:10px 0 0; }
+.decide-note { font-size:12.5px; color:var(--muted); }
+#review-bucket .rv-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-top:1px solid var(--line); }
+#review-bucket .rv-name { font-size:14.5px; font-weight:600; }
+#review-bucket .rv-btns { display:flex; flex-wrap:wrap; gap:6px; }
+#review-bucket .rv-btns button { background:#fff; border:1px solid var(--line); padding:7px 10px; font:12px var(--mono, monospace); cursor:pointer; }
 .tp-pill.cur { outline:2px solid var(--ink, #1f2a24); outline-offset:1px; }
 .tp-meta { display:flex; justify-content:space-between; gap:12px; margin-top:10px; font:12px var(--mono, monospace); color:var(--muted); }
 .tp-skip { text-align:center; margin:14px 0 4px; font-size:13px; }
@@ -24,7 +35,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-ec99c75">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-d520df7">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -32,7 +43,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-ec99c75">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-d520df7">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -50,10 +61,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-ec99c75"></script>
-<script src="shared/utils.js?v=20261121-ec99c75"></script>
-<script src="shared/data.symptoms.js?v=20261121-ec99c75"></script>
-<script src="shared/vault.js?v=20261121-ec99c75"></script>
+<script src="shared/data.diagnostics.js?v=20261121-d520df7"></script>
+<script src="shared/utils.js?v=20261121-d520df7"></script>
+<script src="shared/data.symptoms.js?v=20261121-d520df7"></script>
+<script src="shared/vault.js?v=20261121-d520df7"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -313,23 +324,25 @@ let currentTop = [];
 let testPage = 0;
 const TESTS_PER_PAGE = 2;
 
+const SKIP_REASONS = ['Not relevant to me', 'Too much hassle', 'Already covered by other tests', 'I will ask my doctor first', 'Other reason'];
+// decision: keep (will ask about it) | done (already had it) | later (in the Review list) | skip (not for me)
 function readAnswers() {
   const answers = {};
   document.querySelectorAll('.test-card').forEach((card, i) => {
-    const testName = card.dataset.test;
-    const yesChecked = card.querySelector(`#done-${i}-yes`).checked;
-    const noChecked  = card.querySelector(`#done-${i}-no`).checked;
-    const recency       = card.querySelector(`#recency-${i}`).value;
-    const resultStatus  = card.querySelector(`#result-status-${i}`).value;
-    const resultNote    = card.querySelector(`#result-note-${i}`).value.trim();
-    if (yesChecked || noChecked) {
-      answers[testName] = {
-        done: yesChecked,
-        recency:      yesChecked ? (recency      || null) : null,
-        resultStatus: yesChecked ? (resultStatus || null) : null,
-        resultNote:   yesChecked ? (resultNote   || null) : null
-      };
-    }
+    const picked = card.querySelector('input[type=radio]:checked');
+    if (!picked) return;
+    const v = picked.value, yes = v === 'yes';
+    const recency      = card.querySelector(`#recency-${i}`).value;
+    const resultStatus = card.querySelector(`#result-status-${i}`).value;
+    const resultNote   = card.querySelector(`#result-note-${i}`).value.trim();
+    answers[card.dataset.test] = {
+      decision: yes ? 'done' : (v === 'no' ? 'keep' : v),
+      done: yes,
+      recency:      yes ? (recency      || null) : null,
+      resultStatus: yes ? (resultStatus || null) : null,
+      resultNote:   yes ? (resultNote   || null) : null,
+      skipReason:   v === 'skip' ? (card.querySelector(`#skip-reason-${i}`).value || null) : null
+    };
   });
   return answers;
 }
@@ -360,8 +373,11 @@ function renderResultsStage(){
   let cardsHtml = '';
   top10.forEach((d, i)=>{
     const prev = prevAnswers[d.test] || {};
-    const doneYes = prev.done === true;
-    const doneNo = prev.done === false;
+    const dec = prev.decision || (prev.done === true ? 'done' : (prev.done === false ? 'keep' : ''));
+    const doneYes = dec === 'done';
+    const doneNo = dec === 'keep';
+    const isLater = dec === 'later', isSkip = dec === 'skip';
+    const skipOpts = SKIP_REASONS.map(r=>`<option value="${r}" ${prev.skipReason===r?'selected':''}>${r}</option>`).join('');
     const recencyOpts = RECENCY_OPTIONS.map(r=>`<option value="${r}" ${prev.recency===r?'selected':''}>${r}</option>`).join('');
     const resultOpts = RESULT_OPTIONS.map(r=>`<option value="${r}" ${prev.resultStatus===r?'selected':''}>${r}</option>`).join('');
     const matchReasons = [].concat(
@@ -405,25 +421,37 @@ function renderResultsStage(){
         ${originTag}
       </div>
       <div class="answers">
-        <span class="intake-label" style="margin:0;">Already done?</span>
-        <div class="radio-pair">
-          <input type="radio" name="done-${i}" id="done-${i}-yes" value="yes" ${doneYes?'checked':''}>
-          <label for="done-${i}-yes">Yes</label>
+        <span class="intake-label" style="margin:0;">What would you like to do?</span>
+        <div class="radio-pair decide-row">
           <input type="radio" name="done-${i}" id="done-${i}-no" value="no" ${doneNo?'checked':''}>
-          <label for="done-${i}-no">No</label>
+          <label for="done-${i}-no">Keep it</label>
+          <input type="radio" name="done-${i}" id="done-${i}-yes" value="yes" ${doneYes?'checked':''}>
+          <label for="done-${i}-yes">Already done</label>
+          <input type="radio" name="done-${i}" id="done-${i}-later" value="later" ${isLater?'checked':''}>
+          <label for="done-${i}-later">Decide later</label>
+          <input type="radio" name="done-${i}" id="done-${i}-skip" value="skip" ${isSkip?'checked':''}>
+          <label for="done-${i}-skip">Not for me</label>
         </div>
         <select class="recency-select" id="recency-${i}" aria-label="When did you last have ${esc(d.test)}?" ${doneYes?'':'disabled'}>
-          <option value="">How long ago?</option>
+          <option value="">When was it done?</option>
           ${recencyOpts}
         </select>
       </div>
       <div class="result-row" id="result-row-${i}" style="${doneYes?'':'display:none;'}">
         <select class="recency-select" id="result-status-${i}" aria-label="Result status for ${esc(d.test)} (optional)">
-          <option value="">Result status (optional, self-reported)</option>
+          <option value="">Result status (optional)</option>
           ${resultOpts}
         </select>
-        <input type="text" class="result-note-input" id="result-note-${i}" aria-label="Notes on your ${esc(d.test)} result" placeholder="Notes, e.g. &quot;Vitamin D 18 ng/mL&quot;" value="${esc(prev.resultNote||'')}">
+        <input type="text" class="result-note-input" id="result-note-${i}" aria-label="Notes on your ${esc(d.test)} result" placeholder="Result, e.g. value and unit" value="${esc(prev.resultNote||'')}">
       </div>
+      <div class="decide-extra" id="skip-row-${i}" style="${isSkip?'':'display:none;'}">
+        <select class="recency-select" id="skip-reason-${i}" aria-label="Why is ${esc(d.test)} not for you? (optional)">
+          <option value="">Why? (optional)</option>
+          ${skipOpts}
+        </select>
+        <span class="decide-note">Set aside. It won\u2019t be listed as a test to ask about.</span>
+      </div>
+      <div class="decide-extra decide-note" id="later-row-${i}" style="${isLater?'':'display:none;'}">Saved in your Review list below. Decide when you are ready.</div>
     </div>`;
   });
 
@@ -466,9 +494,10 @@ function renderResultsStage(){
   </div>
   <div class="tp-bar">
     <div id="tp-pills" class="tp-pills" aria-label="Jump to a test"></div>
-    <div class="tp-meta"><span id="tp-range"></span><span id="answer-counter"></span></div>
+    <div class="tp-meta"><span id="tp-range"></span><button type="button" id="tp-review-chip" class="tp-chip" style="display:none;"></button><span id="answer-counter"></span></div>
   </div>
   <div id="cards">${cardsHtml}</div>
+  <div id="review-bucket" class="note-block" style="display:none;"></div>
   <div class="page-footer-nav">
     <a href="profile.html" class="btn secondary" id="tp-back">&larr; Back</a>
     <button type="button" class="btn secondary" id="tp-prev" style="display:none;">&larr; Previous 2</button>
@@ -479,25 +508,36 @@ function renderResultsStage(){
   `;
 
   document.querySelectorAll('.test-card').forEach((card, i)=>{
-    const yes = card.querySelector(`#done-${i}-yes`);
-    const no = card.querySelector(`#done-${i}-no`);
     const sel = card.querySelector(`#recency-${i}`);
     const resultRow = card.querySelector(`#result-row-${i}`);
-    yes.addEventListener('change', ()=>{ sel.disabled=false; resultRow.style.display=''; });
-    no.addEventListener('change', ()=>{
-      sel.disabled=true; sel.value='';
-      resultRow.style.display='none';
-      card.querySelector(`#result-status-${i}`).value='';
-      card.querySelector(`#result-note-${i}`).value='';
-    });
+    function sync() {
+      const v = (card.querySelector('input[type=radio]:checked') || {}).value;
+      const yes = v === 'yes';
+      sel.disabled = !yes;
+      sel.style.display = yes ? '' : 'none';
+      resultRow.style.display = yes ? '' : 'none';
+      if (!yes) {
+        sel.value = '';
+        card.querySelector(`#result-status-${i}`).value = '';
+        card.querySelector(`#result-note-${i}`).value = '';
+      }
+      card.querySelector(`#skip-row-${i}`).style.display = v === 'skip' ? '' : 'none';
+      card.querySelector(`#later-row-${i}`).style.display = v === 'later' ? '' : 'none';
+      if (v !== 'skip') card.querySelector(`#skip-reason-${i}`).value = '';
+    }
+    card.addEventListener('change', e => { if (e.target.type === 'radio') sync(); });
+    sync();
   });
 
 
   // Soft gate: live answer counter + two-click confirm
   let confirmPending = false;
+  function isDecided(card) {
+    const r = card.querySelector('input[type=radio]:checked');
+    return !!r && r.value !== 'later';
+  }
   function countAnswered() {
-    return [...document.querySelectorAll('.test-card')]
-      .filter(card => card.querySelector('input[type=radio]:checked')).length;
+    return [...document.querySelectorAll('.test-card')].filter(isDecided).length;
   }
   function updateCounter() {
     const n = countAnswered(), total = document.querySelectorAll('.test-card').length;
@@ -536,13 +576,40 @@ function renderResultsStage(){
     paintPills();
     if (jump) document.getElementById('tp-range').scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
+  function decisionOf(c) { const r = c.querySelector('input[type=radio]:checked'); return r ? r.value : ''; }
   function paintPills() {
     document.getElementById('tp-pills').innerHTML = cardEls.map((c, i) => {
-      const done = !!c.querySelector('input[type=radio]:checked');
+      const v = decisionOf(c);
+      const cls = v === 'later' ? ' later' : (v === 'skip' ? ' skip' : (v ? ' done' : ''));
       const cur = Math.floor(i / TESTS_PER_PAGE) === testPage;
-      return `<button type="button" class="tp-pill${done ? ' done' : ''}${cur ? ' cur' : ''}" data-i="${i}" aria-label="Test ${i + 1}: ${esc(cardEls[i].dataset.test)}${done ? ', answered' : ''}">${i + 1}</button>`;
+      const word = { yes: 'already done', no: 'kept', later: 'in your Review list', skip: 'set aside' }[v] || '';
+      return `<button type="button" class="tp-pill${cls}${cur ? ' cur' : ''}" data-i="${i}" aria-label="Test ${i + 1}: ${esc(cardEls[i].dataset.test)}${word ? ', ' + word : ''}">${i + 1}</button>`;
     }).join('');
+    paintReview();
   }
+  // Review list: tests marked "Decide later", with the three ways to settle each one
+  function paintReview() {
+    const later = cardEls.map((c, i) => ({ c, i })).filter(x => decisionOf(x.c) === 'later');
+    const box = document.getElementById('review-bucket');
+    const chip = document.getElementById('tp-review-chip');
+    chip.style.display = later.length ? '' : 'none';
+    chip.textContent = `Review (${later.length})`;
+    const last = testPage === pageTotal - 1;
+    box.style.display = later.length && last ? '' : 'none';
+    box.innerHTML = later.length ? `<span class="k">Review list</span>
+      <p class="refine-why" style="margin:6px 0 4px;">You set these aside to decide later. Keep what you want to ask your doctor about, and drop the rest.</p>
+      ${later.map(x => `<div class="rv-row" data-i="${x.i}"><span class="rv-name">${esc(x.c.dataset.test)}</span>
+        <span class="rv-btns"><button type="button" data-act="no">Keep</button><button type="button" data-act="yes">Already done</button><button type="button" data-act="skip">Not for me</button></span></div>`).join('')}` : '';
+  }
+  document.getElementById('review-bucket').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const i = Number(b.closest('.rv-row').dataset.i), card = cardEls[i];
+    const radio = card.querySelector(`input[type=radio][value="${b.dataset.act}"]`);
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+    if (b.dataset.act === 'yes') showTestPage(Math.floor(i / TESTS_PER_PAGE), true);   // go there to add when and the result
+  });
+  document.getElementById('tp-review-chip').addEventListener('click', () => showTestPage(pageTotal - 1, true));
   document.getElementById('tp-pills').addEventListener('click', e => {
     const b = e.target.closest('.tp-pill'); if (b) showTestPage(Math.floor(Number(b.dataset.i) / TESTS_PER_PAGE), true);
   });
@@ -583,7 +650,7 @@ function renderResultsStage(){
       document.getElementById('continue-btn').textContent = 'Continue anyway \u2192';
       // Flash all unanswered cards
       const unanswered = [...document.querySelectorAll('.test-card')]
-        .filter(card => !card.querySelector('input[type=radio]:checked'));
+        .filter(card => !isDecided(card));
       unanswered.forEach(card => {
         card.classList.remove('card-needs-answer');
         void card.offsetWidth;
@@ -821,6 +888,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-ec99c75"></script>
+<script src="shared/statusbar.js?v=20261121-d520df7"></script>
 </body>
 </html>
