@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-d520df7">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-e53041a">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -35,7 +35,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-d520df7">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-e53041a">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -43,7 +43,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-d520df7">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-e53041a">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -61,10 +61,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-d520df7"></script>
-<script src="shared/utils.js?v=20261121-d520df7"></script>
-<script src="shared/data.symptoms.js?v=20261121-d520df7"></script>
-<script src="shared/vault.js?v=20261121-d520df7"></script>
+<script src="shared/data.diagnostics.js?v=20261121-e53041a"></script>
+<script src="shared/utils.js?v=20261121-e53041a"></script>
+<script src="shared/data.symptoms.js?v=20261121-e53041a"></script>
+<script src="shared/vault.js?v=20261121-e53041a"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -451,7 +451,7 @@ function renderResultsStage(){
         </select>
         <span class="decide-note">Set aside. It won\u2019t be listed as a test to ask about.</span>
       </div>
-      <div class="decide-extra decide-note" id="later-row-${i}" style="${isLater?'':'display:none;'}">Saved in your Review list below. Decide when you are ready.</div>
+      <div class="decide-extra decide-note" id="later-row-${i}" style="${isLater?'':'display:none;'}">Parked. It stays in your saved file for a later visit, and nothing is needed now.</div>
     </div>`;
   });
 
@@ -479,7 +479,6 @@ function renderResultsStage(){
   </div>
   <p class="lede">${symptomLine}</p>`;
   document.getElementById('res-list').innerHTML = `
-  <p class="section-sub" style="display:block;margin-bottom:14px;">Showing ${top10.length} of the ${matches.length} tests that fit your profile</p>
   <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
     <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few tests unanswered</div>
     <div style="font-size:14px;line-height:1.6;">
@@ -494,7 +493,7 @@ function renderResultsStage(){
   </div>
   <div class="tp-bar">
     <div id="tp-pills" class="tp-pills" aria-label="Jump to a test"></div>
-    <div class="tp-meta"><span id="tp-range"></span><button type="button" id="tp-review-chip" class="tp-chip" style="display:none;"></button><span id="answer-counter"></span></div>
+    <div class="tp-meta"><span id="tp-range"></span><span id="answer-counter"></span></div>
   </div>
   <div id="cards">${cardsHtml}</div>
   <div id="review-bucket" class="note-block" style="display:none;"></div>
@@ -533,8 +532,7 @@ function renderResultsStage(){
   // Soft gate: live answer counter + two-click confirm
   let confirmPending = false;
   function isDecided(card) {
-    const r = card.querySelector('input[type=radio]:checked');
-    return !!r && r.value !== 'later';
+    return !!card.querySelector('input[type=radio]:checked');
   }
   function countAnswered() {
     return [...document.querySelectorAll('.test-card')].filter(isDecided).length;
@@ -582,34 +580,20 @@ function renderResultsStage(){
       const v = decisionOf(c);
       const cls = v === 'later' ? ' later' : (v === 'skip' ? ' skip' : (v ? ' done' : ''));
       const cur = Math.floor(i / TESTS_PER_PAGE) === testPage;
-      const word = { yes: 'already done', no: 'kept', later: 'in your Review list', skip: 'set aside' }[v] || '';
+      const word = { yes: 'already done', no: 'kept', later: 'parked for a later visit', skip: 'set aside' }[v] || '';
       return `<button type="button" class="tp-pill${cls}${cur ? ' cur' : ''}" data-i="${i}" aria-label="Test ${i + 1}: ${esc(cardEls[i].dataset.test)}${word ? ', ' + word : ''}">${i + 1}</button>`;
     }).join('');
     paintReview();
   }
-  // Review list: tests marked "Decide later", with the three ways to settle each one
+  // Parked tests ("Decide later") are only mentioned in one line; they wait in the saved file for another visit
   function paintReview() {
-    const later = cardEls.map((c, i) => ({ c, i })).filter(x => decisionOf(x.c) === 'later');
+    const parked = cardEls.filter(c => decisionOf(c) === 'later').map(c => c.dataset.test);
     const box = document.getElementById('review-bucket');
-    const chip = document.getElementById('tp-review-chip');
-    chip.style.display = later.length ? '' : 'none';
-    chip.textContent = `Review (${later.length})`;
-    const last = testPage === pageTotal - 1;
-    box.style.display = later.length && last ? '' : 'none';
-    box.innerHTML = later.length ? `<span class="k">Review list</span>
-      <p class="refine-why" style="margin:6px 0 4px;">You set these aside to decide later. Keep what you want to ask your doctor about, and drop the rest.</p>
-      ${later.map(x => `<div class="rv-row" data-i="${x.i}"><span class="rv-name">${esc(x.c.dataset.test)}</span>
-        <span class="rv-btns"><button type="button" data-act="no">Keep</button><button type="button" data-act="yes">Already done</button><button type="button" data-act="skip">Not for me</button></span></div>`).join('')}` : '';
+    box.style.display = parked.length && testPage === pageTotal - 1 ? '' : 'none';
+    box.innerHTML = parked.length
+      ? `<span class="k">Parked for a later visit</span><p class="refine-why" style="margin:6px 0 0;">${parked.map(esc).join(', ')}. ${parked.length > 1 ? 'They stay' : 'It stays'} in your saved file, so you can decide next time. ${parked.length > 1 ? 'They are' : 'It is'} still counted as something to ask your doctor about.</p>`
+      : '';
   }
-  document.getElementById('review-bucket').addEventListener('click', e => {
-    const b = e.target.closest('button[data-act]'); if (!b) return;
-    const i = Number(b.closest('.rv-row').dataset.i), card = cardEls[i];
-    const radio = card.querySelector(`input[type=radio][value="${b.dataset.act}"]`);
-    radio.checked = true;
-    radio.dispatchEvent(new Event('change', { bubbles: true }));
-    if (b.dataset.act === 'yes') showTestPage(Math.floor(i / TESTS_PER_PAGE), true);   // go there to add when and the result
-  });
-  document.getElementById('tp-review-chip').addEventListener('click', () => showTestPage(pageTotal - 1, true));
   document.getElementById('tp-pills').addEventListener('click', e => {
     const b = e.target.closest('.tp-pill'); if (b) showTestPage(Math.floor(Number(b.dataset.i) / TESTS_PER_PAGE), true);
   });
@@ -676,6 +660,7 @@ let symQuery = '', refineTimer = null;
 function refineSummaryHtml() {
   const bits = [];
   if (profile.bmi) bits.push(`BMI ${esc(fmtNum(Number(profile.bmi)))}`);
+  if (profile.waistCm) bits.push('waist');
   const n = (profile.symptoms || []).length;
   if (n) bits.push(`${n} symptom${n > 1 ? 's' : ''}`);
   if (profile.dietType) bits.push(`${esc(profile.dietType)} diet`);
@@ -695,13 +680,15 @@ function renderRefinePanel() {
     <div id="refine-body" ${open ? '' : 'hidden'} style="margin-top:20px;">
       <div class="refine-step" data-step="0">
         <div class="refine-step-h"><b>1 &middot; Body size (BMI)</b></div>
-        <p class="refine-why">BMI decides whether metabolic tests, such as blood sugar and cholesterol, are on your list. It is the biggest single change.</p>
+        <p class="refine-why">BMI decides whether metabolic tests, such as blood sugar and cholesterol, are on your list. A waist more than half your height adds heart and metabolic tests even when BMI looks fine.</p>
         <div class="field-row">
           <div class="field"><label class="intake-label" for="rf-height">Height (cm)</label>
             <input type="number" id="rf-height" inputmode="decimal" min="120" max="230" step="0.5" placeholder="e.g. 168" value="${profile.heightCm || ''}"></div>
           <div class="field"><label class="intake-label" for="rf-weight">Weight (kg)</label>
             <input type="number" id="rf-weight" inputmode="decimal" min="30" max="250" step="0.1" placeholder="e.g. 70" value="${profile.weightKg || ''}"></div>
         </div>
+        <div class="field" style="max-width:200px;margin-top:12px;"><label class="intake-label" for="rf-waist">Waist (cm), optional</label>
+          <input type="number" id="rf-waist" inputmode="decimal" min="50" max="200" step="0.5" placeholder="e.g. 88" value="${profile.waistCm || ''}"></div>
         <p class="refine-why" id="rf-bmi" style="margin-top:8px;"></p>
         <p class="refine-why" style="margin-top:2px;">Use feet, inches or pounds, or add waist: <a href="profile.html#refine&amp;next=diagnostics.html">open the full form &rarr;</a></p>
       </div>
@@ -754,6 +741,7 @@ function renderRefinePanel() {
   setOpen(open);
   document.getElementById('rf-height').addEventListener('input', onBodyInput);
   document.getElementById('rf-weight').addEventListener('input', onBodyInput);
+  document.getElementById('rf-waist').addEventListener('input', onBodyInput);
   document.getElementById('rf-diet').addEventListener('change', e => {
     profile.dietType = e.target.value;
     if (state.diet) state.diet = Object.assign({}, state.diet, { type: e.target.value });
@@ -829,18 +817,26 @@ function readBody() {
   const w = parseFloat(document.getElementById('rf-weight').value);
   return { h, w, hasH: !isNaN(h), hasW: !isNaN(w) };
 }
+function readWaist() { const v = parseFloat(document.getElementById('rf-waist').value); return isNaN(v) ? null : v; }
 function showBmi() {
   const { h, w, hasH, hasW } = readBody();
   const el = document.getElementById('rf-bmi');
   if (!el) return;
-  if (hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250) {
+  const lines = [];
+  const bodyOk = hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250;
+  if (bodyOk) {
     const bmi = computeBMI(w, h);
-    el.innerHTML = `<b>BMI ${esc(fmtNum(bmi))}</b> &middot; ${esc(bmiTag(bmi, profile)[0])}`;
+    lines.push(`<b>BMI ${esc(fmtNum(bmi))}</b> &middot; ${esc(bmiTag(bmi, profile)[0])}`);
   } else if (hasH || hasW) {
-    el.textContent = (hasH && hasW) ? 'Height should be 120 to 230 cm and weight 30 to 250 kg.' : 'Add both height and weight to see your BMI.';
-  } else {
-    el.textContent = '';
+    lines.push((hasH && hasW) ? 'Height should be 120 to 230 cm and weight 30 to 250 kg.' : 'Add both height and weight to see your BMI.');
   }
+  const wc = readWaist();
+  if (wc != null) {
+    if (wc < 50 || wc > 200) lines.push('Waist should be 50 to 200 cm.');
+    else if (bodyOk) { const r = wc / h; lines.push(`<b>Waist-to-height ${r.toFixed(2)}</b> &middot; ${esc(whtrTag(r)[0])}`); }
+    else lines.push('Add height and weight too, to compare your waist with your height.');
+  }
+  el.innerHTML = lines.join('<br>');
 }
 function onBodyInput() {
   showBmi();
@@ -849,18 +845,20 @@ function onBodyInput() {
 }
 function applyBody() {
   const { h, w, hasH, hasW } = readBody();
-  if (!hasH && !hasW) {
-    if (profile.heightCm || profile.weightKg) {
-      profile.heightCm = null; profile.weightKg = null; profile.bmi = null; profile.whtr = null;
-      commitRefine('Height and weight cleared.');
-    }
-    return;
+  const wc = readWaist();
+  const said = [];
+  const bodyOk = hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250;
+  if (bodyOk && (profile.heightCm !== h || profile.weightKg !== w)) {
+    profile.heightCm = h; profile.weightKg = w; profile.bmi = computeBMI(w, h);
+    said.push(`BMI ${fmtNum(profile.bmi)} added`);
+  } else if (!hasH && !hasW && (profile.heightCm || profile.weightKg)) {
+    profile.heightCm = null; profile.weightKg = null; profile.bmi = null;
+    said.push('Height and weight cleared');
   }
-  if (!(hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250)) return;   // wait until both are sensible
-  if (profile.heightCm === h && profile.weightKg === w) return;
-  profile.heightCm = h; profile.weightKg = w; profile.bmi = computeBMI(w, h);
-  profile.whtr = profile.waistCm ? computeWHtR(profile.waistCm, h) : null;
-  commitRefine(`BMI ${fmtNum(profile.bmi)} added.`);
+  if (wc != null && wc >= 50 && wc <= 200 && profile.waistCm !== wc) { profile.waistCm = wc; said.push('Waist added'); }
+  else if (wc == null && profile.waistCm) { profile.waistCm = null; said.push('Waist cleared'); }
+  profile.whtr = (profile.waistCm && profile.heightCm) ? computeWHtR(profile.waistCm, profile.heightCm) : null;
+  if (said.length) commitRefine(said.join('. ') + '.');
 }
 
 function commitRefine(what) {
@@ -888,6 +886,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-d520df7"></script>
+<script src="shared/statusbar.js?v=20261121-e53041a"></script>
 </body>
 </html>

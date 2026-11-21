@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <title>Start your KYH health self-check — About you</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-d520df7">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-e53041a">
 <style>
 .scope-panel { text-align:center; padding:40px 20px; max-width:700px; margin:0 auto; }
 #scope-title:focus { outline: none; }
@@ -26,7 +26,7 @@
 <!-- share:start -->
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://vividnova.com/3DHealth/profile.html">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-d520df7">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-e53041a">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -34,7 +34,7 @@
 <meta property="og:title" content="Start your KYH health self-check — About you">
 <meta property="og:description" content="Start your KYH self-check: enter your age, sex, height, weight and lifestyle to get tests, exercises and diet priorities matched to you. Stays in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/profile.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-d520df7">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-e53041a">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -105,8 +105,8 @@
   <form id="profile-form" novalidate>
 
     <p class="lede" id="refine-intro" style="display:none; font-size:15px; margin:0 0 22px;">
-      <b>Refine your list.</b> Your starter tests are based on your age and sex. Add what you know and the list is sharpened.
-      Every field here is optional, and height and weight go together (they give your BMI).
+      <b>Your details.</b> Add or change anything here; each addition sharpens your list.
+      Every field is optional, and height and weight go together (they give your BMI).
     </p>
     <p class="lede" id="quick-intro" style="font-size:13.5px; margin:0 0 22px;">
       KYH helps you prepare questions for your doctor. It is not medical advice, and it is not for pregnancy, recent surgery, food allergies or new warning symptoms such as chest pain. <a href="about.html">Details</a>
@@ -313,8 +313,8 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261121-d520df7"></script>
-<script src="shared/vault.js?v=20261121-d520df7"></script>
+<script src="shared/utils.js?v=20261121-e53041a"></script>
+<script src="shared/vault.js?v=20261121-e53041a"></script>
 <script>
 renderHeader('fine', 'KYH - Profile');
 renderFooter();
@@ -357,10 +357,10 @@ if (p.cuisine || (state.diet && state.diet.cuisine)) {
 /* ---- two modes ----
    Quick (first visit): sex and age only, then straight to a starter list of tests.
    Refine (from the tests page, #refine): height + weight (BMI), dietary preference and the optional detail.
-   A person who has already added body details lands in refine mode so nothing they entered is hidden.
+   Only an explicit #refine opens the detailed form; the first screen is always sex and age (prefilled when returning, and nothing already entered is wiped).
    The hash may carry next=<page> so a refine started from Routine or Diet returns there. */
 const RETURN_PAGES = ['diagnostics.html', 'routine.html', 'diet.html', 'summary.html'];
-const refineMode = /(^|[#&])refine(&|$)/.test(location.hash) || !!(p.heightCm || p.weightKg);
+const refineMode = /(^|[#&])refine(&|$)/.test(location.hash);
 const nextMatch = /[#&]next=([a-z-]+\.html)/.exec(location.hash);
 const returnPage = nextMatch && RETURN_PAGES.indexOf(nextMatch[1]) !== -1 ? nextMatch[1] : 'diagnostics.html';
 function applyMode() {
@@ -371,7 +371,9 @@ function applyMode() {
   show('quick-intro', !refineMode);
   show('btn-back-list', refineMode);
   document.getElementById('btn-back-list').setAttribute('href', returnPage);
-  document.getElementById('btn-submit').textContent = refineMode ? 'Update my list \u2192' : 'Show my tests \u2192';
+  const WHERE = { 'diagnostics.html': ['my tests', 'Save and see my tests'], 'routine.html': ['my routine', 'Save and back to Routine'], 'diet.html': ['my diet step', 'Save and back to Diet'], 'summary.html': ['my findings', 'Save and see my findings'] }[returnPage];
+  document.getElementById('btn-back-list').innerHTML = '&larr; Back to ' + WHERE[0];
+  document.getElementById('btn-submit').textContent = refineMode ? WHERE[1] + ' \u2192' : 'Show my tests \u2192';
   if (refineMode) refreshMetrics();
 }
 
@@ -707,6 +709,6 @@ applyMode();
 /* Same page, different mode (e.g. #refine typed or pasted): start over cleanly in that mode. */
 window.addEventListener('hashchange', () => location.reload());
 </script>
-<script src="shared/statusbar.js?v=20261121-d520df7"></script>
+<script src="shared/statusbar.js?v=20261121-e53041a"></script>
 </body>
 </html>

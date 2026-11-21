@@ -57,3 +57,5 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 
 **Diagnostics refine panel (v1.1):** the "Refine this list" card expands in place with three steps in order: 1 Body size (BMI, live badge), 2 Symptoms (search plus common chips), 3 Dietary preference. Every change saves, redraws the list below and says what was added or dropped; answers already given are kept. The full profile form (feet/pounds, waist, lifestyle) stays one link away.
+
+**Tests page decisions (v1.6-1.7):** each test offers Keep it / Already done / Decide later / Not for me. Decide later means parked for another visit (kept in the saved file, one line of text on the last page, still counted as a test to ask about); Not for me sets it aside with an optional reason and keeps it out of the Doctor Brief's asks. The refine panel's body step also takes an optional waist, giving waist-to-height (0.5 or more, or waist over 90/94 cm men or 80 cm women, adds Metabolic and Cardiovascular tests). profile.html shows the detailed form only for an explicit `#refine`; its button wording follows `next=`.

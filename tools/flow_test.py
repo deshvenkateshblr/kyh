@@ -123,6 +123,12 @@ def full_flow(page, base, problems):
     check('diagnostics.html' in page.url and 'profile.html' not in page.url, 'refine: BMI applied without leaving the page')
     pr = state_of(page)['profile']
     check(abs(pr['bmi'] - 27.3) < 0.2, 'refine: BMI saved', pr.get('bmi'))
+    before_waist = card_names(page)
+    page.fill('#rf-waist', '92')
+    check('waist-to-height 0.57' in page.inner_text('#rf-bmi').lower(), 'refine: waist-to-height shown live beside BMI', page.inner_text('#rf-bmi'))
+    page.wait_for_function("() => (JSON.parse(sessionStorage.getItem('%s')).profile || {}).waistCm === 92" % STATE_KEY, timeout=5000)
+    pw = state_of(page)['profile']
+    check(abs(pw['whtr'] - 92/160) < 0.01, 'refine: waist and waist-to-height saved in place', pw.get('whtr'))
     after_bmi = card_names(page)
     check('bmi 27.3' in page.inner_text('#refine-summary').lower(), 'refine: summary shows what the list was refined with')
     check('next' in page.inner_text('#refine-next').lower(), 'refine: a filled step offers Next')
@@ -186,6 +192,17 @@ def full_flow(page, base, problems):
     page.wait_for_url(re.compile(r'diagnostics\.html'))
     page.wait_for_selector('.test-card')
     check(page.locator('#refine-body').is_visible() is False, 'refine: tests page opens with the panel collapsed after the full form')
+    # returning user: the first screen stays simple and wording follows where they came from
+    page.goto(page.url.split('diagnostics.html')[0] + 'profile.html')
+    page.wait_for_selector('#btn-submit')
+    check('show my tests' in page.inner_text('#btn-submit').lower() and not page.locator('#body-section').is_visible(), 'returning: profile opens as sex and age with "Show my tests", not the detailed form')
+    check(page.input_value('#f-age') == '52', 'returning: sex and age are prefilled')
+    page.goto(page.url.split('profile.html')[0] + 'profile.html#refine&next=routine.html')
+    page.wait_for_selector('#btn-submit')
+    check('back to routine' in page.inner_text('#btn-submit').lower() and 'back to my routine' in page.inner_text('#btn-back-list').lower(), 'returning: detailed form wording follows the page you came from', page.inner_text('#btn-submit'))
+    check('update my list' not in page.content().lower(), 'returning: no "Update my list" wording')
+    page.goto(page.url.split('profile.html')[0] + 'diagnostics.html')
+    page.wait_for_selector('.test-card')
 
     # --- symptoms, added from the tests page
     page.locator('#refine-toggle').click(); page.locator('#refine-next').click()
@@ -217,16 +234,16 @@ def full_flow(page, base, problems):
     check(page.locator('.test-card:visible').evaluate_all('els => els.map(e => e.dataset.test)') == first_two, 'tests: a pill jumps back to its page')
     labels = [t.lower() for t in page.locator('.test-card:visible').first.locator('.decide-row label').all_inner_texts()]
     check(labels == ['keep it', 'already done', 'decide later', 'not for me'], 'tests: four choices per test', labels)
-    # Decide later -> Review list on the last page
+    # Decide later = parked for another visit: one line of text, no extra decisions now
     page.locator('label[for="done-1-later"]').click()
-    check(page.locator('.test-card:visible').nth(1).locator('.later-note').first.is_visible() or page.locator('#later-row-1').is_visible(), 'review: Decide later says where the test went')
-    check('review (1)' in page.inner_text('#tp-review-chip').lower(), 'review: a Review (1) chip appears')
-    check('later' in page.locator('.tp-pill').nth(1).get_attribute('class'), 'review: the pill is marked as undecided')
-    page.locator('#tp-review-chip').click()
-    check(page.locator('#review-bucket').is_visible() and page.locator('#review-bucket .rv-row').count() == 1, 'review: the Review list shows the test on the last page')
-    later_name = page.locator('#review-bucket .rv-name').inner_text()
-    page.locator('#review-bucket button[data-act="skip"]').click()
-    check(not page.locator('#review-bucket').is_visible() and 'skip' in page.locator('.tp-pill').nth(1).get_attribute('class'), 'review: Not for me from the Review list settles it')
+    check(page.locator('#later-row-1').is_visible() and 'parked' in page.inner_text('#later-row-1').lower(), 'parked: Decide later says it waits for a later visit')
+    check('later' in page.locator('.tp-pill').nth(1).get_attribute('class'), 'parked: the pill is marked')
+    check('tp-review-chip' not in page.content() and '10 of the' not in page.inner_text('main'), 'tests: no Review chip and no "10 of N tests" line')
+    page.locator('.tp-pill').last.click()
+    check(page.locator('#review-bucket').is_visible() and 'parked for a later visit' in page.inner_text('#review-bucket').lower() and page.locator('#review-bucket button').count() == 0, 'parked: the last page summarises parked tests in text, with no buttons')
+    page.locator('.tp-pill').nth(1).click()
+    page.locator('label[for="done-1-skip"]').click()
+    check('skip' in page.locator('.tp-pill').nth(1).get_attribute('class'), 'tests: Not for me marks the pill as set aside')
     page.locator('.tp-pill').nth(1).click()
     check(page.locator('#skip-reason-1').is_visible(), 'review: a reason can be given for a test set aside')
     page.select_option('#skip-reason-1', 'Too much hassle')
