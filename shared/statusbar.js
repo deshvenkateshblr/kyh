@@ -1,6 +1,8 @@
 /* One-line fixed bar along the bottom of every page: version, Refresh, Feedback.
    Self-contained (injects its own style) so it also works on pages that do not load styles.css.
-   The version is the build id that tools/stamp.py puts on this script's own address (?v=...).
+   The version people see is the release number in the VERSION file (1.0, 1.1, ...), which tools/stamp.py
+   writes into APP_VERSION below. The build id on this script's own address (?v=...) is kept as a tooltip
+   and in the feedback email, so a report can be traced to the exact files.
    Feedback opens an email to info@vividnova.com with only the version and page name in it:
    nothing the person entered is ever added to the message. */
 (function () {
@@ -9,12 +11,15 @@
 
   var FEEDBACK_TO = 'info@vividnova.com';
 
-  function version() {
+  var APP_VERSION = '1.1';
+
+  function build() {
     var me = document.currentScript || document.querySelector('script[src*="statusbar.js"]');
     var m = me && /[?&]v=([^&#]+)/.exec(me.getAttribute('src') || '');
     return m ? m[1] : 'dev';
   }
-  var V = version();
+  var B = build();
+  var V = APP_VERSION;
 
   function pageName() {
     var f = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '');
@@ -45,14 +50,14 @@
 
     var subject = 'KYH feedback (v' + V + ')';
     var body = 'Hi,\n\n[Write your feedback here. Please do not include personal health details.]\n\n' +
-               '---\nVersion: ' + V + '\nPage: ' + pageName();
+               '---\nVersion: ' + V + ' (build ' + B + ')\nPage: ' + pageName();
     var mailto = 'mailto:' + FEEDBACK_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 
     var bar = document.createElement('div');
     bar.id = 'kyh-statusbar';
     bar.setAttribute('role', 'contentinfo');
     bar.innerHTML =
-      '<span class="kyh-sb-v">KYH &middot; v' + V.replace(/[<>&"]/g, '') + '</span>' +
+      '<span class="kyh-sb-v" title="Build ' + B.replace(/[<>&"]/g, '') + '">KYH &middot; v' + V.replace(/[<>&"]/g, '') + '</span>' +
       '<span class="kyh-sb-actions">' +
         '<button type="button" id="kyh-sb-refresh" title="Reload this page with the latest version. Your answers are kept.">Refresh</button>' +
         '<a id="kyh-sb-feedback" href="' + mailto + '">Feedback</a>' +

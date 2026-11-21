@@ -5,10 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-af80352">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-a782df6">
+<style>
+.refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
+.refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
+.refine-panel .refine-step-h { font-size:15px; margin-bottom:4px; }
+.refine-panel .refine-why { font-size:13.5px; line-height:1.55; color:var(--muted); margin:2px 0 10px; }
+</style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-af80352">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-a782df6">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +22,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-af80352">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-a782df6">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -34,9 +40,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-af80352"></script>
-<script src="shared/utils.js?v=20261121-af80352"></script>
-<script src="shared/vault.js?v=20261121-af80352"></script>
+<script src="shared/data.diagnostics.js?v=20261121-a782df6"></script>
+<script src="shared/utils.js?v=20261121-a782df6"></script>
+<script src="shared/data.symptoms.js?v=20261121-a782df6"></script>
+<script src="shared/vault.js?v=20261121-a782df6"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -292,6 +299,29 @@ function isExcluded(d, userTraits) {
   return d.exclusions.some(ext => userTraits.includes(ext));
 }
 
+let currentTop = [];
+
+function readAnswers() {
+  const answers = {};
+  document.querySelectorAll('.test-card').forEach((card, i) => {
+    const testName = card.dataset.test;
+    const yesChecked = card.querySelector(`#done-${i}-yes`).checked;
+    const noChecked  = card.querySelector(`#done-${i}-no`).checked;
+    const recency       = card.querySelector(`#recency-${i}`).value;
+    const resultStatus  = card.querySelector(`#result-status-${i}`).value;
+    const resultNote    = card.querySelector(`#result-note-${i}`).value.trim();
+    if (yesChecked || noChecked) {
+      answers[testName] = {
+        done: yesChecked,
+        recency:      yesChecked ? (recency      || null) : null,
+        resultStatus: yesChecked ? (resultStatus || null) : null,
+        resultNote:   yesChecked ? (resultNote   || null) : null
+      };
+    }
+  });
+  return answers;
+}
+
 function renderResultsStage(){
   const symptoms = profile.symptoms || [];
   const {cats} = activeCategories(profile);
@@ -312,6 +342,7 @@ function renderResultsStage(){
   );
 
   const top10 = buildRecommendations(matches, cats, symptoms, profile);
+  currentTop = top10.map(d => d.test);
   const prevAnswers = (state.diagnostics && state.diagnostics.answers) || {};
 
   let cardsHtml = '';
@@ -410,30 +441,12 @@ function renderResultsStage(){
     symptomLine = `${basedOnText}${unmatchedNote} &middot; <a href="symptoms.html">adjust on your symptoms &rarr;</a>`;
   }
 
-  // Refine card: the list starts from age and sex; BMI and dietary preference sharpen it.
-  const hasBody = !!(profile.heightCm && profile.weightKg && profile.bmi);
-  const hasDiet = !!profile.dietType;
-  let refineHtml;
-  if (hasBody && hasDiet) {
-    refineHtml = `<div class="note-block" style="margin-bottom:22px;">
-      <span class="k">Refined with</span> BMI ${esc(fmtNum(Number(profile.bmi)))} &middot; ${esc(profile.dietType)} diet
-      &middot; <a href="profile.html#refine">Edit &rarr;</a></div>`;
-  } else {
-    const ask = [!hasBody ? 'your height and weight (for BMI)' : null, !hasDiet ? 'your dietary preference' : null].filter(Boolean).join(' and ');
-    const why = [!hasBody ? 'BMI decides whether metabolic tests, such as blood sugar, are on your list' : null,
-                 !hasDiet ? 'a vegetarian, vegan or Jain diet adds B12 and iron checks' : null].filter(Boolean).join('; ');
-    refineHtml = `<div class="note-block" style="margin-bottom:22px;">
-      <span class="k">Refine this list</span>
-      <p style="margin:8px 0 12px;font-size:14.5px;line-height:1.6;">Add ${ask}. ${why.charAt(0).toUpperCase() + why.slice(1)}. Takes under a minute, and everything is optional.</p>
-      <a href="profile.html#refine" class="btn secondary">Refine my list &rarr;</a></div>`;
-  }
-
-  main.innerHTML = `
+  document.getElementById('res-head').innerHTML = `
   <div class="section-head">
     <h2>${top10.length < 10 ? "Your matched tests" : "Your top 10 tests"}</h2>
   </div>
-  <p class="lede">${symptomLine}</p>
-  ${refineHtml}
+  <p class="lede">${symptomLine}</p>`;
+  document.getElementById('res-list').innerHTML = `
   <p class="section-sub" style="display:block;margin-bottom:14px;">${matches.length} tests matched your profile &middot; ${symptomDrivenCount} pulled in directly from your symptoms, the rest fill out your baseline risk panel</p>
   <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
     <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few tests unanswered</div>
@@ -496,23 +509,7 @@ function renderResultsStage(){
   updateCounter();
 
   function proceedToNext() {
-    const answers = {};
-    document.querySelectorAll('.test-card').forEach((card, i) => {
-      const testName = card.dataset.test;
-      const yesChecked = card.querySelector(`#done-${i}-yes`).checked;
-      const noChecked  = card.querySelector(`#done-${i}-no`).checked;
-      const recency       = card.querySelector(`#recency-${i}`).value;
-      const resultStatus  = card.querySelector(`#result-status-${i}`).value;
-      const resultNote    = card.querySelector(`#result-note-${i}`).value.trim();
-      if (yesChecked || noChecked) {
-        answers[testName] = {
-          done: yesChecked,
-          recency:      yesChecked ? (recency      || null) : null,
-          resultStatus: yesChecked ? (resultStatus || null) : null,
-          resultNote:   yesChecked ? (resultNote   || null) : null
-        };
-      }
-    });
+    const answers = readAnswers();
     const diagnostics = {
       topTests: top10.map(d => ({test:d.test, group:d.group, bySymptom:d.bySymptom, viaSymptoms:d.viaSymptoms, viaRiskGroup:d.viaRiskGroup||false, riskGroupReason:d.riskGroupReason||null})),
       answers
@@ -554,12 +551,176 @@ function renderResultsStage(){
   });
 }
 
+/* ---- Refine panel: expands in place; every change re-draws the list below without leaving the page ----
+   Order: body size (BMI) first, then symptoms, then dietary preference. */
+const isMaleProfile = profile && profile.sex === 'Male';
+const SYM_CATS = JSON.parse(JSON.stringify(window.SYMPTOM_CATEGORIES || []));
+if (isMaleProfile) SYM_CATS.forEach(c => { c.items = c.items.filter(x => !window.FEMALE_ONLY_SYMPTOMS.has(x)); });
+const SYM_ALL = [...new Set([...(window.DIAG || []).flatMap(d => d.symptoms || []), ...SYM_CATS.flatMap(c => c.items)])]
+  .filter(x => !window.RED_FLAG_SYMPTOMS.has(x) && !(isMaleProfile && window.FEMALE_ONLY_SYMPTOMS.has(x))).sort();
+const SYM_COMMON = SYM_CATS.slice(0, 4).flatMap(c => c.items.slice(0, 3)).filter(x => SYM_ALL.includes(x));
+const DIET_CHOICES = ['Vegetarian', 'Vegan', 'Eggetarian', 'Jain', 'Pescatarian', 'Non-Vegetarian'];
+let symQuery = '', refineTimer = null;
+
+function refineSummaryHtml() {
+  const bits = [];
+  if (profile.bmi) bits.push(`BMI ${esc(fmtNum(Number(profile.bmi)))}`);
+  const n = (profile.symptoms || []).length;
+  if (n) bits.push(`${n} symptom${n > 1 ? 's' : ''}`);
+  if (profile.dietType) bits.push(`${esc(profile.dietType)} diet`);
+  return bits.length
+    ? `Refined with ${bits.join(' &middot; ')}`
+    : `Add your BMI, symptoms and diet to sharpen this list. Each one changes it right here, and everything is optional.`;
+}
+
+function renderRefinePanel() {
+  const slot = document.getElementById('refine-slot');
+  const open = location.hash === '#refine';
+  slot.innerHTML = `
+  <section class="note-block refine-panel" id="refine">
+    <span class="k">Refine this list</span>
+    <p id="refine-summary" style="margin:8px 0 12px;font-size:14.5px;line-height:1.6;">${refineSummaryHtml()}</p>
+    <button type="button" class="btn secondary" id="refine-toggle" aria-expanded="${open}" aria-controls="refine-body">${open ? 'Close' : 'Refine my list &darr;'}</button>
+    <div id="refine-body" ${open ? '' : 'hidden'} style="margin-top:20px;">
+      <div class="refine-step">
+        <div class="refine-step-h"><b>1 &middot; Body size (BMI)</b></div>
+        <p class="refine-why">BMI decides whether metabolic tests, such as blood sugar and cholesterol, are on your list. It is the biggest single change.</p>
+        <div class="field-row">
+          <div class="field"><label class="intake-label" for="rf-height">Height (cm)</label>
+            <input type="number" id="rf-height" inputmode="decimal" min="120" max="230" step="0.5" placeholder="e.g. 168" value="${profile.heightCm || ''}"></div>
+          <div class="field"><label class="intake-label" for="rf-weight">Weight (kg)</label>
+            <input type="number" id="rf-weight" inputmode="decimal" min="30" max="250" step="0.1" placeholder="e.g. 70" value="${profile.weightKg || ''}"></div>
+        </div>
+        <p class="refine-why" id="rf-bmi" style="margin-top:8px;"></p>
+        <p class="refine-why" style="margin-top:2px;">Use feet, inches or pounds, or add waist: <a href="profile.html#refine&amp;next=diagnostics.html">open the full form &rarr;</a></p>
+      </div>
+      <div class="refine-step">
+        <div class="refine-step-h"><b>2 &middot; Symptoms</b></div>
+        <p class="refine-why">Anything bothering you now pulls in the tests that look into it. Skip it if nothing does.</p>
+        <input type="text" id="rf-sym-search" class="field" style="width:100%;box-sizing:border-box;padding:10px 12px;font-size:15px;" placeholder="Search symptoms&hellip;" autocomplete="off">
+        <div id="rf-sym-suggest" class="browse-grid" style="margin-top:10px;"></div>
+        <div class="chips-row" id="rf-sym-chips" style="margin-top:10px;"></div>
+        <p class="refine-why" style="margin-top:6px;"><a href="symptoms.html">Browse every symptom and add known vitals &rarr;</a></p>
+      </div>
+      <div class="refine-step">
+        <div class="refine-step-h"><b>3 &middot; Dietary preference</b></div>
+        <p class="refine-why">A vegetarian, vegan or Jain diet adds B12 and iron checks, and the diet step later starts from it.</p>
+        <div class="field" style="max-width:320px;"><label class="intake-label" for="rf-diet">Dietary preference</label>
+          <select id="rf-diet"><option value="">&mdash; Skip &mdash;</option>${DIET_CHOICES.map(x => `<option value="${x}" ${profile.dietType === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      </div>
+    </div>
+    <p id="refine-live" role="status" aria-live="polite" class="refine-why" style="margin:12px 0 0;"></p>
+  </section>`;
+
+  const toggle = document.getElementById('refine-toggle'), body = document.getElementById('refine-body');
+  toggle.addEventListener('click', () => {
+    const show = body.hidden;
+    body.hidden = !show;
+    toggle.setAttribute('aria-expanded', String(show));
+    toggle.innerHTML = show ? 'Close' : 'Refine my list &darr;';
+  });
+  document.getElementById('rf-height').addEventListener('input', onBodyInput);
+  document.getElementById('rf-weight').addEventListener('input', onBodyInput);
+  document.getElementById('rf-diet').addEventListener('change', e => {
+    profile.dietType = e.target.value;
+    if (state.diet) state.diet = Object.assign({}, state.diet, { type: e.target.value });
+    commitRefine(e.target.value ? `${e.target.value} diet added.` : 'Diet cleared.');
+  });
+  document.getElementById('rf-sym-search').addEventListener('input', e => { symQuery = e.target.value; renderSymUi(); });
+  document.getElementById('rf-sym-suggest').addEventListener('click', e => {
+    const b = e.target.closest('.browse-chip'); if (b) toggleSym(b.dataset.s);
+  });
+  document.getElementById('rf-sym-chips').addEventListener('click', e => {
+    const b = e.target.closest('.chip-x'); if (b) toggleSym(b.dataset.s);
+  });
+  renderSymUi();
+  showBmi();
+}
+
+function renderSymUi() {
+  const chosen = new Set(profile.symptoms || []);
+  const q = symQuery.trim().toLowerCase();
+  const pool = q ? SYM_ALL.filter(x => x.toLowerCase().includes(q)) : SYM_COMMON;
+  const shown = pool.slice(0, 12);
+  document.getElementById('rf-sym-suggest').innerHTML = shown.length
+    ? shown.map(x => `<button type="button" class="browse-chip${chosen.has(x) ? ' selected' : ''}" data-s="${esc(x)}">${esc(x)}</button>`).join('')
+    : `<span class="refine-why">No symptom matches that.</span>`;
+  document.getElementById('rf-sym-chips').innerHTML = [...chosen]
+    .map(x => `<span class="chip">${esc(x)}<button type="button" class="chip-x" data-s="${esc(x)}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join('');
+}
+
+function toggleSym(sym) {
+  const set = new Set(profile.symptoms || []);
+  const adding = !set.has(sym);
+  if (adding) set.add(sym); else set.delete(sym);
+  profile.symptoms = [...set];
+  renderSymUi();
+  commitRefine(adding ? `${sym} added.` : `${sym} removed.`);
+}
+
+function readBody() {
+  const h = parseFloat(document.getElementById('rf-height').value);
+  const w = parseFloat(document.getElementById('rf-weight').value);
+  return { h, w, hasH: !isNaN(h), hasW: !isNaN(w) };
+}
+function showBmi() {
+  const { h, w, hasH, hasW } = readBody();
+  const el = document.getElementById('rf-bmi');
+  if (!el) return;
+  if (hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250) {
+    const bmi = computeBMI(w, h);
+    el.innerHTML = `<b>BMI ${esc(fmtNum(bmi))}</b> &middot; ${esc(bmiTag(bmi, profile)[0])}`;
+  } else if (hasH || hasW) {
+    el.textContent = (hasH && hasW) ? 'Height should be 120 to 230 cm and weight 30 to 250 kg.' : 'Add both height and weight to see your BMI.';
+  } else {
+    el.textContent = '';
+  }
+}
+function onBodyInput() {
+  showBmi();
+  clearTimeout(refineTimer);
+  refineTimer = setTimeout(applyBody, 600);
+}
+function applyBody() {
+  const { h, w, hasH, hasW } = readBody();
+  if (!hasH && !hasW) {
+    if (profile.heightCm || profile.weightKg) {
+      profile.heightCm = null; profile.weightKg = null; profile.bmi = null; profile.whtr = null;
+      commitRefine('Height and weight cleared.');
+    }
+    return;
+  }
+  if (!(hasH && hasW && h >= 120 && h <= 230 && w >= 30 && w <= 250)) return;   // wait until both are sensible
+  if (profile.heightCm === h && profile.weightKg === w) return;
+  profile.heightCm = h; profile.weightKg = w; profile.bmi = computeBMI(w, h);
+  profile.whtr = profile.waistCm ? computeWHtR(profile.waistCm, h) : null;
+  commitRefine(`BMI ${fmtNum(profile.bmi)} added.`);
+}
+
+function commitRefine(what) {
+  const before = currentTop.slice();
+  const answers = Object.assign({}, (state.diagnostics && state.diagnostics.answers) || {}, readAnswers());   // keep tick-boxes already answered
+  state.diagnostics = Object.assign({}, state.diagnostics, { answers });
+  persistState(state);
+  const y = window.scrollY;
+  renderResultsStage();
+  window.scrollTo(0, y);
+  document.getElementById('refine-summary').innerHTML = refineSummaryHtml();
+  const added = currentTop.filter(t => !before.includes(t)), dropped = before.filter(t => !currentTop.includes(t));
+  const live = document.getElementById('refine-live');
+  live.textContent = what + ' ' + (added.length || dropped.length
+    ? `Your list changed: ${added.length ? added.length + ' added (' + added.slice(0, 3).join(', ') + (added.length > 3 ? '…' : '') + ')' : ''}${added.length && dropped.length ? ', ' : ''}${dropped.length ? dropped.length + ' dropped' : ''}.`
+    : 'Your list stays the same.');
+}
+
 if(!profile){
   main.innerHTML = `<div class="empty-state">We need your profile first. <a href="profile.html">Go back and fill it in &rarr;</a></div>`;
 } else {
+  main.innerHTML = `<div id="res-head"></div><div id="refine-slot"></div><div id="res-list"></div>`;
   renderResultsStage();
+  renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-af80352"></script>
+<script src="shared/statusbar.js?v=20261121-a782df6"></script>
 </body>
 </html>

@@ -105,31 +105,56 @@ def full_flow(page, base, problems):
     check('refine this list' in page.inner_text('main').lower(), 'tests: offers to refine with BMI and dietary preference')
     starter = card_names(page)
 
-    # --- refine: height, weight (BMI), dietary preference and the optional detail
-    page.locator('a:has-text("Refine my list")').click()
+    # --- refine in place: the panel opens on the tests page; each change redraws the list, no new screen
+    check(not page.locator('#refine-body').is_visible(), 'refine: panel starts collapsed')
+    page.locator('#refine-toggle').click()
+    check(page.locator('#rf-height').is_visible() and page.locator('#rf-sym-search').is_visible() and page.locator('#rf-diet').is_visible(), 'refine: BMI, symptoms and diet open in place')
+    order = page.evaluate("() => [...document.querySelectorAll('#refine-body .refine-step-h')].map(e => e.innerText.toLowerCase())")
+    check('bmi' in order[0] and 'symptom' in order[1] and 'diet' in order[2], 'refine: steps run BMI, symptoms, dietary preference', order)
+    check(all(len(t.strip()) > 20 for t in page.locator('#refine-body .refine-step > p:first-of-type').all_inner_texts()), 'refine: each step has a short description')
+    page.fill('#rf-height', '160'); page.fill('#rf-weight', '70')
+    check('bmi 27.3' in page.inner_text('#rf-bmi').lower(), 'refine: BMI shown live as the numbers are typed', page.inner_text('#rf-bmi'))
+    page.wait_for_function("() => (JSON.parse(sessionStorage.getItem('%s')).profile || {}).bmi > 27" % STATE_KEY, timeout=5000)
+    check('diagnostics.html' in page.url and 'profile.html' not in page.url, 'refine: BMI applied without leaving the page')
+    pr = state_of(page)['profile']
+    check(abs(pr['bmi'] - 27.3) < 0.2, 'refine: BMI saved', pr.get('bmi'))
+    after_bmi = card_names(page)
+    check('BMI 27.3' in page.inner_text('#refine-summary') or 'bmi 27.3' in page.inner_text('#refine-summary').lower(), 'refine: summary shows what the list was refined with')
+    page.locator('#rf-sym-suggest .browse-chip').first.click()
+    first_sym = state_of(page)['profile']['symptoms']
+    check(len(first_sym) == 1 and 'symptom' in page.inner_text('#refine-summary').lower(), 'refine: a symptom picked in place is saved', first_sym)
+    page.fill('#rf-sym-search', 'Fatigue')
+    page.locator('#rf-sym-suggest .browse-chip[data-s="Fatigue"]').click()
+    check('Fatigue' in state_of(page)['profile']['symptoms'], 'refine: symptom search works in place')
+    page.fill('#rf-sym-search', '')
+    page.select_option('#rf-diet', 'Vegetarian')
+    check(state_of(page)['profile']['dietType'] == 'Vegetarian', 'refine: dietary preference saved')
+    check('updated' in page.inner_text('#refine-live').lower() or 'changed' in page.inner_text('#refine-live').lower() or 'same' in page.inner_text('#refine-live').lower(), 'refine: says what changed in the list', page.inner_text('#refine-live'))
+    refined = card_names(page)
+    check(refined != starter, 'refine: BMI, symptoms and diet change the list', (len(starter), len(refined)))
+    # answers given before a change are kept
+    page.locator('label[for="done-0-no"]').click()
+    kept = page.locator('.test-card').first.get_attribute('data-test')
+    page.select_option('#rf-diet', 'Vegan')
+    still = page.evaluate("(t) => { const c = [...document.querySelectorAll('.test-card')].find(x => x.dataset.test === t); return !c || !!c.querySelector('input[type=radio]:checked'); }", kept)
+    check(still, 'refine: an answer already given survives a list change')
+    # the full form is still there for waist, feet/pounds and lifestyle
+    page.locator('#refine a:has-text("full form")').click()
     page.wait_for_url(re.compile(r'profile\.html#refine'))
-    check(page.locator('#f-height-cm').is_visible() and page.locator('#f-diet-type').is_visible(), 'refine: height, weight and dietary preference are shown')
-    check(page.input_value('#f-age') == '52', 'refine: sex and age are kept')
-    page.fill('#f-height-cm', '160')
-    page.fill('#f-weight-kg', '70')
+    check(page.input_value('#f-height-cm') == '160' and page.input_value('#f-age') == '52', 'refine: full form keeps what was entered in place')
     page.evaluate("() => { document.getElementById('more-detail').open = true; }")
     page.fill('#f-waist-cm', '92')
     page.select_option('#f-smoking', 'Never')
     page.select_option('#f-alcohol', 'Occasional')
     page.select_option('#f-diet-type', 'Vegetarian')
-    page.evaluate("() => { const s = document.getElementById('f-cuisine-type'); if (s.options.length < 2) throw new Error('no cuisines'); }")
     page.select_option('#f-cuisine-type', index=1)
     page.locator('#profile-form button[type=submit]').click()
     page.wait_for_url(re.compile(r'diagnostics\.html'))
     page.wait_for_selector('.test-card')
-    check('refined with' in page.inner_text('main').lower() and 'bmi' in page.inner_text('main').lower(), 'refine: the tests page shows what the list was refined with')
-    pr = state_of(page)['profile']
-    check(abs(pr['bmi'] - 27.3) < 0.2 and pr['dietType'] == 'Vegetarian', 'refine: BMI and dietary preference saved', pr.get('bmi'))
-    refined = card_names(page)
-    check(refined != starter, 'refine: BMI and diet change the list', (len(starter), len(refined)))
+    check(page.locator('#refine-body').is_visible() is False, 'refine: tests page opens with the panel collapsed after the full form')
 
     # --- symptoms, added from the tests page
-    page.locator('a:has-text("add symptoms")').first.click()
+    page.locator('#res-head a[href="symptoms.html"]').first.click()
     page.wait_for_url(re.compile(r'symptoms\.html'))
     for s in ('Back Pain', 'Fatigue', 'Insomnia'):
         page.fill('#symptom-input', s)
@@ -137,7 +162,7 @@ def full_flow(page, base, problems):
     page.fill('#symptom-input', '')
     page.locator('#continue-btn').click()
     page.wait_for_url(re.compile(r'diagnostics\.html'))
-    check(sorted(state_of(page)['profile']['symptoms']) == ['Back Pain', 'Fatigue', 'Insomnia'], 'symptoms: three picked and carried forward')
+    check(set(['Back Pain', 'Insomnia', 'High Blood Pressure']) <= set(state_of(page)['profile']['symptoms']), 'symptoms: new picks carried forward and the one picked in place kept (Fatigue was toggled off on purpose)', state_of(page)['profile']['symptoms'])
 
     # --- diagnostics
     page.wait_for_selector('.test-card')
@@ -497,11 +522,11 @@ def status_bar(browser, base):
             return { pos: cs.position, h: Math.round(r.height), bottom: Math.round(innerHeight - r.bottom), wrap: b.scrollWidth <= b.clientWidth + 1,
                      txt: b.innerText.replace(/\\s+/g, ' '), n: document.querySelectorAll('#kyh-statusbar').length,
                      src: (document.querySelector('script[src*="statusbar.js"]') || {}).getAttribute && document.querySelector('script[src*="statusbar.js"]').getAttribute('src') }; }""")
-        ver = (info or {}).get('src', '') and info['src'].split('v=')[-1]
+        ver = open('VERSION').read().strip()
         if not info or info['pos'] != 'fixed' or info['h'] > 36 or info['bottom'] != 0 or not info['wrap'] or info['n'] != 1 or ('v' + ver) not in info['txt'] \
            or 'refresh' not in info['txt'].lower() or 'feedback' not in info['txt'].lower():
             bad.append((pg, info))
-    check(not bad, 'bar on all 10 pages: fixed, one line, at the bottom, shows the build version, Refresh and Feedback', bad[:2])
+    check(not bad, 'bar on all 10 pages: fixed, one line, at the bottom, shows the release number (VERSION file), Refresh and Feedback', bad[:2])
 
     # Feedback: opens an email to info@vividnova.com carrying only version and page, never answers
     page.goto(base + 'profile.html'); page.wait_for_timeout(400)
@@ -510,7 +535,7 @@ def status_bar(browser, base):
     u = urlparse(href); q = parse_qs(u.query)
     check(u.scheme == 'mailto' and unquote(u.path) == 'info@vividnova.com', 'feedback: goes to info@vividnova.com', href[:60])
     msg = (q.get('subject', [''])[0] + ' ' + q.get('body', [''])[0])
-    check('Version:' in msg and 'Page: profile' in msg, 'feedback: email carries the version and page', msg[-80:])
+    check('Version: ' + open('VERSION').read().strip() in msg and 'build ' in msg and 'Page: profile' in msg, 'feedback: email carries the version and page', msg[-80:])
     check(not any(w in msg for w in ('Back Pain', '172', 'Vegetarian', 'Male')), 'feedback: no health answers are put in the email')
 
     # Refresh reloads and keeps the answers

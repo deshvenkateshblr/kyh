@@ -76,6 +76,13 @@ def build_id():
     return datetime.date.today().strftime('%Y%m%d') + '-' + h
 
 BUILD = build_id()
+# Release number people see (1.0, 1.1, ...): edit the VERSION file when you ship something worth a new number.
+RELEASE = open('VERSION', encoding='utf-8').read().strip()
+_sb = open('shared/statusbar.js', encoding='utf-8').read()
+_sb2 = re.sub(r"var APP_VERSION = '[^']*';", "var APP_VERSION = '%s';" % RELEASE, _sb, count=1)
+if _sb2 != _sb:
+    open('shared/statusbar.js', 'w', encoding='utf-8').write(_sb2)
+    print('release', RELEASE)
 ASSET = re.compile(r'''((?:src|href)=["'])((?:shared/)[^"'#?]+\.(?:js|css|png|jpg|jpeg|svg|webp))(\?[^"'#]*)?(["'])''')
 
 def stamp_assets(s):

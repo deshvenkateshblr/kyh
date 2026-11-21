@@ -40,7 +40,7 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 | `insights.js` | Turns saved state into insight cards and the AI prompt context. |
 | `doctorbrief.js` | Builds the printable Doctor Brief. |
 | `summary-page.js` | Page logic for `summary.html`. |
-| `statusbar.js` | One-line fixed bar on every flow page: build version (read from its own `?v=` stamp), Refresh (reloads; answers are kept), Feedback (mailto info@vividnova.com carrying only version and page). Hidden when printing. |
+| `statusbar.js` | One-line fixed bar on every flow page: release number from the `VERSION` file (1.0, 1.1, ...; edit that file to bump it, `tools/stamp.py` writes it in; the build id stays in the tooltip and the feedback email), Refresh (reloads; answers are kept), Feedback (mailto info@vividnova.com carrying only version and page). Hidden when printing. |
 | `movement-plan.js` | `mountMovementPlan(root, state, onNext)`: the exercise shortlist, mounted inside `routine.html`. |
 | `diet-targets.js` | `mountDietTargets(root, state, onFinish)`: calorie, macro, water and nutrient targets, mounted inside `diet.html`. |
 | `icons.js` | Shared SVG icon set. |
@@ -54,3 +54,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 - `kyf_teaser.html` is an orphan page, and `data.routine.js` is empty.
 - Every step page falls back to an "We need your profile first" state if the profile is missing.
 - Height and weight are optional. When missing, energy, calorie and water figures use a typical body size (70 kg, 168 cm) and every place that shows such a figure says so (`bodySizeAssumed` / `bodySizeNoticeHtml` in `shared/utils.js`: Routine, Diet targets, insights, Doctor Brief).
+
+
+**Diagnostics refine panel (v1.1):** the "Refine this list" card expands in place with three steps in order: 1 Body size (BMI, live badge), 2 Symptoms (search plus common chips), 3 Dietary preference. Every change saves, redraws the list below and says what was added or dropped; answers already given are kept. The full profile form (feet/pounds, waist, lifestyle) stays one link away.
