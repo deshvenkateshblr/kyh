@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Say how often you eat key food groups and which nutrients you get, to find the dietary gaps worth raising with your doctor.">
+  <meta name="description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
   <title>Your diet: food and nutrient check — KYH</title>
-  <link rel="stylesheet" href="shared/styles.css?v=20261113-9dedb40">
+  <link rel="stylesheet" href="shared/styles.css?v=20261121-584fd25">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-9dedb40">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-584fd25">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
 <meta property="og:site_name" content="KYH — Know Your Health">
 <meta property="og:title" content="Your diet: food and nutrient check — KYH">
-<meta property="og:description" content="Say how often you eat key food groups and which nutrients you get, to find the dietary gaps worth raising with your doctor.">
+<meta property="og:description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diet.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-9dedb40">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-584fd25">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,9 +33,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261113-9dedb40"></script>
-<script src="shared/vault.js?v=20261113-9dedb40"></script>
-<script src="shared/data.diet.js?v=20261113-9dedb40"></script>
+<script src="shared/utils.js?v=20261121-584fd25"></script>
+<script src="shared/vault.js?v=20261121-584fd25"></script>
+<script src="shared/data.diet.js?v=20261121-584fd25"></script>
+<script src="shared/diet-targets.js?v=20261121-584fd25"></script>
 <script>
 const state   = loadState() || {};
 const profile = state.profile || {};
@@ -59,9 +60,11 @@ let dietState = Object.assign({
 if (profile.dietType) dietState.type = profile.dietType;
 if (profile.cuisine)  dietState.cuisine = profile.cuisine;
 
+let hideTargetsHook = null;   // set by renderPage: clears the targets when an answer changes
 function saveDietProgress() {
   const next = Object.assign({}, state, { diet: dietState });
   persistState(next);
+  if (hideTargetsHook) hideTargetsHook();
 }
 
 function getExamples(nutrientName) {
@@ -143,25 +146,15 @@ function renderPage() {
 
     <div class="cat-title">Nutrient Priorities</div>
     <p class="lede" style="font-size:14px; margin-bottom:16px;" id="priority-meta">Ranked for you</p>
-    <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few nutrients unanswered</div>
-      <div style="font-size:14px;line-height:1.6;">
-        Your answers tell us which nutrients are already covered vs. where the real gaps are &mdash;
-        the more you fill in, the more focused your dietary priorities become.
-      </div>
-      <div style="margin-top:10px;">
-        <a href="#" id="soft-gate-continue-link" style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);text-decoration:underline;">
-          That&rsquo;s fine &mdash; continue anyway &rarr;
-        </a>
-      </div>
-    </div>
     <div id="nutrient-list"></div>
 
-    <div class="page-footer-nav">
-      <a href="routine-plan.html" class="btn secondary">← Back</a>
+    <div class="page-footer-nav" id="diet-nav">
+      <a href="routine.html#plan" class="btn secondary">← Back</a>
       <span id="answer-counter" style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 14px;white-space:nowrap;"></span>
-      <button type="button" class="btn" id="continue-btn">Synthesize Diet →</button>
+      <a href="#" id="skip-btn" class="btn secondary">Skip diet, see my findings →</a>
+      <button type="button" class="btn" id="continue-btn">Show my diet targets ↓</button>
     </div>
+    <div id="diet-targets" style="display:none;margin-top:48px;"></div>
   `;
 
   // Food Quality Matrix
@@ -176,6 +169,7 @@ function renderPage() {
     if (t) { profile.dietType = t; dietState.type = t; }
     profile.cuisine = c; dietState.cuisine = c;
     persistState(Object.assign({}, state, { profile, diet: dietState }));
+    if (hideTargetsHook) hideTargetsHook();
     renderNutrients();
   }
   document.getElementById("d-type").addEventListener("change", onPrefChange);
@@ -193,8 +187,13 @@ function renderPage() {
     }
  });
 
-  // Soft gate: live answer counter + two-click confirm (nutrient cards)
-  let confirmPending = false;
+  // Every answer here is optional: a live counter, no gate.
+  // Targets are worked out on click and shown below; if an answer changes afterwards they are cleared
+  // so what is on screen always matches what is saved.
+  const targetsBox = document.getElementById('diet-targets');
+  const continueBtn = document.getElementById('continue-btn');
+  let targetsShown = false;
+
   function countNutrientAnswered() {
     return [...document.querySelectorAll('#nutrient-list .test-card')]
       .filter(card => card.querySelector('input[type=radio]:checked')).length;
@@ -203,21 +202,13 @@ function renderPage() {
     const n = countNutrientAnswered();
     const total = document.querySelectorAll('#nutrient-list .test-card').length;
     const el = document.getElementById('answer-counter');
-    const btn = document.getElementById('continue-btn');
     if (!el || !total) return;
-    el.textContent = n === total ? '' : `${n} of ${total} answered`;
+    el.textContent = n === total ? '' : `${n} of ${total} answered (optional)`;
     el.style.color = 'var(--muted)';
-    el.style.fontWeight = '';
-    el.style.fontSize = '12px';
-    confirmPending = false;
-    btn.textContent = 'Synthesize Diet \u2192';
-    document.querySelectorAll('#nutrient-list .test-card.card-needs-answer').forEach(c => c.classList.remove('card-needs-answer'));
-    const banner = document.getElementById('soft-gate-banner');
-    if (banner) banner.style.display = 'none';
   }
   updateCounter();
 
-  function proceedToNext() {
+  function computeTargets() {
     const rb = resolveDailyBurn(routine, profile);
     const estBurn = rb.burn;
     const { cal: targetCal, factor, floored, lowBurn, floorKcal } = estimateTargetCalories(estBurn, profile);
@@ -234,50 +225,44 @@ function renderPage() {
       .map(n => ({ ...n, ...scoreNutrient(n) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-    goTo("diet-synthesis.html", Object.assign({}, state, { diet: dietState }));
   }
 
-  document.getElementById('soft-gate-continue-link').addEventListener('click', e => {
-    e.preventDefault();
-    proceedToNext();
-  });
+  function showTargets() {
+    computeTargets();
+    const next = Object.assign({}, state, { diet: dietState });
+    persistState(next);
+    targetsShown = true;
+    targetsBox.style.display = '';
+    continueBtn.style.display = 'none';
+    document.getElementById('skip-btn').style.display = 'none';
+    window.mountDietTargets(targetsBox, next, () => goTo('summary.html', next));
+    targetsBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function hideTargets() {
+    if (!targetsShown) return;
+    targetsShown = false;
+    targetsBox.style.display = 'none';
+    targetsBox.innerHTML = '';
+    continueBtn.style.display = '';
+    document.getElementById('skip-btn').style.display = '';
+  }
+  hideTargetsHook = hideTargets;
 
-  // Continue
-  document.getElementById('continue-btn').addEventListener('click', () => {
-    // Food quality markers are required — they feed the scoring algorithm
-    if (Object.keys(dietState.frequency || {}).length < (window.FOOD_QUALITY || []).length) {
+  continueBtn.addEventListener('click', () => {
+    if (!dietState.type) {
       const el = document.getElementById('answer-counter');
-      el.textContent = 'Please answer all Food Quality markers.';
+      el.textContent = 'Please choose your dietary preference first.';
       el.style.color = 'var(--rose)';
-      el.style.fontWeight = '600';
-      el.style.fontSize = '13px';
-      document.querySelector('#markers-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const t = document.getElementById('d-type');
+      t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      t.focus();
       return;
     }
-
-    const n = countNutrientAnswered();
-    const total = document.querySelectorAll('#nutrient-list .test-card').length;
-    if (n < total && !confirmPending) {
-      confirmPending = true;
-      const banner = document.getElementById('soft-gate-banner');
-      banner.style.display = '';
-      banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const el = document.getElementById('answer-counter');
-      el.textContent = `${n} of ${total} answered`;
-      el.style.color = 'var(--amber)';
-      el.style.fontWeight = '600';
-      el.style.fontSize = '12px';
-      document.getElementById('continue-btn').textContent = 'Continue anyway \u2192';
-      const unanswered = [...document.querySelectorAll('#nutrient-list .test-card')]
-        .filter(card => !card.querySelector('input[type=radio]:checked'));
-      unanswered.forEach(card => {
-        card.classList.remove('card-needs-answer');
-        void card.offsetWidth;
-        card.classList.add('card-needs-answer');
-      });
-      return;
-    }
-    proceedToNext();
+    showTargets();
+  });
+  document.getElementById('skip-btn').addEventListener('click', e => {
+    e.preventDefault();
+    goTo('summary.html', state);
   });
 }
 

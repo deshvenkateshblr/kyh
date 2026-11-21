@@ -1,0 +1,296 @@
+/* Diet targets: calories, protein, fibre, water and ranked nutrient priorities, mounted inside the Diet page.
+   mountDietTargets(root, state, onFinish) draws into `root` from state.diet / state.routine / state.profile;
+   onFinish() is called when the person continues. Needs shared/utils.js and shared/data.diet.js. */
+(function () {
+window.mountDietTargets = function (root, state, onFinish) {
+const profile = state.profile || {};
+const routine = state.routine || {};
+const diet = state.diet || {};
+const symptoms = profile.symptoms || [];
+const main = root;
+
+function init() {
+  if (!diet.type) {
+    main.innerHTML = `<div class="empty-state">Please choose your dietary preference above first.</div>`;
+    return;
+  }
+
+  const _rb = resolveDailyBurn(routine, profile);
+  const estBurn = _rb.burn;
+  const burnAssumed = _rb.assumed;
+  const saved = diet.target || {};
+  const factor = (saved.factor != null)
+    ? Number(saved.factor)
+    : intakeFactorFromBody(profile);
+  const _tc = estimateTargetCalories(estBurn, profile);
+  const targetCal = saved.cal != null
+    ? parseInt(saved.cal, 10)
+    : _tc.cal;
+  const flooredT = saved.cal != null ? !!saved.floored : _tc.floored;
+  const lowBurnT = saved.cal != null ? !!saved.lowBurn : _tc.lowBurn;
+  const floorKcalT = saved.floorKcal || _tc.floorKcal;
+  const waterL = (saved.waterL != null)
+    ? Number(saved.waterL)
+    : estimateWaterLiters(profile, estBurn);
+
+  function buildMeetingNotes() {
+      const intake = diet.intake || {};
+      const priorities = diet.priorities || [];
+      if (!priorities.length) return "";
+
+      const lines = [];
+      priorities.slice(0, 6).forEach(p => {
+        const name = esc(p.nutrient);
+        const rawName = p.nutrient;
+        const raw = intake[rawName] || {};
+        // support new + legacy shapes
+        const meeting = raw.meeting
+          || (raw.tracking === "yes" ? "yes" : raw.tracking === "no" ? "no" : "");
+
+        if (meeting !== "no" && meeting !== "partial") return;
+
+        const isLimit = p.direction === "limit";
+        const guide = (typeof nutrientTargetLabel === "function")
+          ? nutrientTargetLabel(rawName, profile, estBurn)
+          : null;
+
+        if (isLimit) {
+          lines.push(
+            meeting === "no"
+              ? `<b>${name}</b>: you marked this as not well limited — worth tightening.`
+              : `<b>${name}</b>: partially limited — small cuts still help.`
+          );
+        } else if (guide) {
+          lines.push(
+            meeting === "no"
+              ? `<b>${name}</b>: below the guide (${guide}).`
+              : `<b>${name}</b>: only partially meeting the guide (${guide}).`
+          );
+        } else {
+          lines.push(
+            meeting === "no"
+              ? `<b>${name}</b>: little current intake noted — food examples above are a practical start.`
+              : `<b>${name}</b>: partial intake — a bit more consistency would help.`
+          );
+        }
+      });
+
+      if (!lines.length) return "";
+
+      return `
+        <div class="note-block" style="margin-bottom:24px; margin-top:12px; font-size:13px;">
+          <span class="k">Recap on targets</span>
+          <p style="margin:8px 0 0 0; line-height:1.7;">${lines.join("<br>")}</p>
+        </div>`;
+  }
+
+function factorLabel(f) {
+  if (f >= 1.02) return 'slight surplus (support healthy weight gain)';
+  if (f >= 0.97) return 'near maintenance';
+  if (f >= 0.92) return 'mild deficit';
+  return 'moderate deficit (conservative)';
+}
+
+  // Portion estimates (simple & practical)
+  const proteinPortions = Math.round((targetCal * 0.25) / 130);
+  const carbPortions    = Math.round((targetCal * 0.45) / 150);
+  const fatPortions     = Math.round((targetCal * 0.30) / 100);
+
+  // ---------- Helpers ----------
+  function getFoodIdeas(nutrientKey) {
+      const dietType = diet.type || "Vegetarian";
+      const cuisine  = diet.cuisine || "Indian";
+
+      const base = (window.PREF_FOOD_EXAMPLES?.[dietType] || {})[nutrientKey] || "";
+      // New shape: CUISINE_EXTRAS[cuisine][dietType][nutrient]
+      const extra = (window.CUISINE_EXTRAS?.[cuisine]?.[dietType] || {})[nutrientKey] || "";
+
+      if (extra) return extra; // diet-specific regional wins (avoids vegan + dairy)
+      return base;
+    }
+
+  function buildPriorityParagraph() {
+    const priorities = diet.priorities || [];
+    if (!priorities.length) {
+      return "We don’t have enough signal yet to prioritise specific nutrients. Focus on overall food quality and consistently hitting your calorie and protein targets.";
+    }
+
+    const top = priorities.slice(0, 5);
+    const names = top.map(p => esc(p.nutrient));
+
+    let text = `Based on your symptoms and current eating patterns, the nutrients that deserve the most attention right now are `;
+    text += names.slice(0, -1).join(", ") + (names.length > 1 ? " and " : "") + names[names.length - 1] + ". ";
+
+    if (top[0]?.note) {
+      text += esc(top[0].note) + " ";
+    }
+
+    const limits = priorities.filter(p => p.direction === "limit");
+    if (limits.length) {
+      text += `It is also worth actively limiting ${limits.map(l => esc(String(l.nutrient).toLowerCase())).join(" and ")}.`;
+    }
+
+    return text;
+  }
+
+  function generateClinicalInsight() {
+    const freq = diet.frequency || {};
+    const priorities = diet.priorities || [];
+    let insights = [];
+
+    if (priorities[0]?.matched?.length) {
+      insights.push(`Your top priority is <b>${esc(priorities[0].nutrient)}</b> (linked to: ${priorities[0].matched.slice(0,3).map(esc).join(", ")}).`);
+    }
+
+    if ((symptoms.includes("Fatigue") || symptoms.includes("Low Energy")) &&
+        (freq.leafy_greens === "Rarely" || freq.leafy_greens === "1-2x/Wk")) {
+      insights.push("Your fatigue is likely connected to low leafy green intake (iron + magnesium). Adding a serving most days is high-leverage.");
+    }
+
+    if ((symptoms.includes("Bloating") || symptoms.includes("Constipation")) &&
+        (freq.fruits === "Rarely" || freq.legumes === "Rarely")) {
+      insights.push("Digestive symptoms correlate with low fibre. Gradually increase fruits and legumes.");
+    }
+
+    if (freq.sugary_drinks === "Daily" || freq.sugary_drinks === "3-5x/Wk") {
+      insights.push("Regular sugary drinks are contributing to blood-sugar volatility. Reducing them is one of the highest-ROI changes you can make.");
+    }
+
+    if (insights.length === 0) {
+      insights.push("Your current patterns look reasonably balanced. Focus on consistency with protein and the priority nutrients above.");
+    }
+
+    return insights[0];
+  }
+
+  const proteinIdeas = getFoodIdeas("Protein");
+  const carbIdeas    = getFoodIdeas("Carbohydrates");
+  const fatIdeas     = getFoodIdeas("Fats");
+  const waterGlasses = Math.round((waterL * 1000) / 250); // ~250 mL per glass
+  const insightText  = generateClinicalInsight();
+  const priorityText = buildPriorityParagraph();
+  const meetingNotesHtml = buildMeetingNotes();
+
+  // ---------- Render ----------
+  main.innerHTML = `
+   
+    <!-- Daily Calorie Target - with both estimates visible -->
+    <div class="cat-title">Daily Targets</div>
+    <div class="stat-strip" style="margin-bottom:24px;">
+      <div class="stat-card hero">
+        <div class="k">Recommended Intake</div>
+        <div class="v">~${targetCal.toLocaleString()}</div>
+        <div class="u">kcal / day</div>
+      </div>
+      <div class="stat-card">
+        <div class="k">Estimated Burn${burnAssumed ? " (assumed)" : ""}</div>
+        <div class="v">~${Number(estBurn).toLocaleString()}</div>
+        <div class="u">kcal / day</div>
+      </div>
+    </div>
+
+    <div class="note-block" style="margin-bottom:24px; font-size:13px;">
+        <span class="k">How intake is calculated</span>
+        <p style="margin:8px 0 0 0; line-height:1.6;">
+            ${burnAssumed ? 'You have not confirmed your daily routine, so burn is assumed from your age, sex, height and weight for a lightly active day. Confirm your routine to make this personal.' : 'Estimated burn from your routine (your resting energy scaled by how active each part of your day is).'}
+            Intake target = burn × <strong>${factor}</strong>
+            (${factorLabel(factor)}), using BMI${(Number(profile.whtr) >= 0.5) ? ' and waist-to-height ratio' : ''}.
+        </p>
+        <p style="margin:8px 0 0 0; line-height:1.6; font-size:12px; color:var(--ink-soft);">
+            <strong>Formula:</strong> ${Number(estBurn).toLocaleString()} × ${factor} ≈ ${Math.round(Number(estBurn) * factor).toLocaleString()} kcal${lowBurnT ? ' (set to your estimated burn instead)' : ''}${flooredT ? ` (raised to ${floorKcalT.toLocaleString()}, the minimum usually advised without medical supervision)` : ''}
+        </p>
+        ${flooredT ? `<p style="margin:8px 0 0 0; line-height:1.6; font-size:13px;">Your calculated target fell below ${floorKcalT.toLocaleString()} kcal a day, which is generally the lowest intake advised without a health professional. Please discuss your intake with a doctor before eating less than this.</p>` : ''}
+        ${lowBurnT ? `<p style="margin:8px 0 0 0; line-height:1.6; font-size:13px;">Your estimated daily energy use is itself below ${floorKcalT.toLocaleString()} kcal, which is unusually low, so the target is set to match it rather than reduce it. Please discuss your intake with a doctor.</p>` : ''}
+    </div>
+
+
+
+    <!-- 2. Clinical Insight -->
+    <div class="cat-title">Clinical Insight</div>
+    <div class="note-block ${insightText.includes("high-leverage") || insightText.includes("highest-ROI") ? "" : "teal"}" style="margin-bottom:32px; margin-top:12px;">
+      <span class="k">Based on your symptoms & habits</span>
+      ${insightText}
+    </div>
+
+    <!-- 3. Nutrient Priorities (collapsed into one paragraph) -->
+    <div class="cat-title">Nutrient Priorities</div>
+    <div class="note-block teal" style="margin-bottom:12px; margin-top:12px;">
+      <span class="k">Personalised for you</span>
+      ${priorityText}
+    </div>
+    ${buildMeetingNotes()}
+
+    <!-- 4. Daily Macro Targets (portions only) -->
+<div class="cat-title">Daily Macro Targets</div>
+<p class="lede" style="font-size:14px; margin-bottom:20px;">
+  Practical portion guides for a ~${targetCal.toLocaleString()} kcal target 
+  (${esc(diet.type)}${diet.cuisine ? ` · ${esc(diet.cuisine)}` : ""}). 
+  One portion ≈ size of your palm / fist.
+</p>
+
+<div class="test-card" style="margin-bottom:10px;">
+  <div class="name">Proteins</div>
+  <div class="test-desc" style="margin-top:4px;">
+    Target: <b>${Math.max(1, proteinPortions - 1)} – ${proteinPortions + 1} portions / day</b>
+  </div>
+  <div style="font-size:13px; color:var(--ink-soft); margin-top:6px;">
+    Prioritise protein at most meals to support muscle, recovery and satiety.
+  </div>
+  ${proteinIdeas ? `
+  <div style="margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:4px;font-size:12.5px;">
+    <b style="color:var(--teal);">Ideas for you:</b> ${esc(proteinIdeas)}
+  </div>` : ""}
+</div>
+
+<div class="test-card" style="margin-bottom:10px;">
+  <div class="name">Complex Carbohydrates</div>
+  <div class="test-desc" style="margin-top:4px;">
+    Target: <b>${Math.max(1, carbPortions - 1)} – ${carbPortions + 1} portions / day</b>
+  </div>
+  <div style="font-size:13px; color:var(--ink-soft); margin-top:6px;">
+    Prefer whole grains, millets, oats and root vegetables for steadier energy.
+  </div>
+  ${carbIdeas ? `
+  <div style="margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:4px;font-size:12.5px;">
+    <b style="color:var(--teal);">Ideas for you:</b> ${esc(carbIdeas)}
+  </div>` : ""}
+</div>
+
+<div class="test-card" style="margin-bottom:10px;">
+  <div class="name">Healthy Fats</div>
+  <div class="test-desc" style="margin-top:4px;">
+    Target: <b>${Math.max(1, fatPortions - 1)} – ${fatPortions + 1} portions / day</b>
+  </div>
+  <div style="font-size:13px; color:var(--ink-soft); margin-top:6px;">
+    Keep portions modest (roughly thumb-sized) to stay within the calorie target.
+  </div>
+  ${fatIdeas ? `
+  <div style="margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:4px;font-size:12.5px;">
+    <b style="color:var(--teal);">Ideas for you:</b> ${esc(fatIdeas)}
+  </div>` : ""}
+</div>
+
+<div class="test-card" style="margin-bottom:10px;">
+  <div class="name">Water</div>
+  <div class="test-desc" style="margin-top:4px;">
+    Target: <b>~${waterL} L/day (~${waterGlasses} glasses)</b>
+  </div>
+  <div style="font-size:13px; color:var(--ink-soft); margin-top:6px;">
+    About ${waterL} L/day from body weight (~33 mL/kg)${Number(estBurn) > 1800 ? ', with a small increase for higher activity' : ''}. Includes water and other drinks; food adds some moisture too.
+  </div>
+  <div style="margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:4px;font-size:12.5px;">
+    <b style="color:var(--teal);">Ideas for you:</b> Spread across the day rather than all at once; add more in heat or after exercise. Water, buttermilk, coconut water, and herbal tea all count. Guide only — not a medical prescription.
+  </div>
+</div>
+
+<div class="page-footer-nav" style="margin-top:32px;">
+  <button type="button" class="btn" id="dt-finish">See my findings →</button>
+</div>
+  `;
+  const fin = main.querySelector('#dt-finish');
+  if (fin) fin.addEventListener('click', onFinish);
+}
+
+init();
+};
+})();

@@ -356,7 +356,7 @@ function render() {
     + '<div class="outcome-panel" id="panel-insights"><div class="panel-inner">'+insightsPanel+'</div></div>'
     + '</div>'
     + '<div class="note-block teal no-print" style="margin-bottom:28px;"><span class="k">Your data, your call</span> Your answers stay in this browser and are not uploaded anywhere. Saving or printing is optional and makes a copy that you control.</div>'
-    + '<div class="page-footer-nav no-print"><a href="diet-synthesis.html" class="btn secondary">&larr; Back</a>'
+    + '<div class="page-footer-nav no-print"><a href="diet.html" class="btn secondary">&larr; Back</a>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;">'
     + '<button type="button" class="btn secondary" id="btn-save-findings">Save findings</button>'
     + '<button type="button" class="btn secondary" id="btn-print-findings">Print findings</button>'

@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="description" content="Describe a typical day: sleep, work, movement and exercise. KYH estimates your daily energy use as you go. Your answers stay in your browser.">
+      <meta name="description" content="Describe a typical day: sleep, work and movement. KYH estimates your daily energy use, then shortlists exercises matched to you. Stays in your browser.">
       <title>Your daily routine — KYH</title>
-     <link rel="stylesheet" href="shared/styles.css?v=20261113-9dedb40">
+     <link rel="stylesheet" href="shared/styles.css?v=20261121-584fd25">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261113-9dedb40">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-584fd25">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
 <meta property="og:site_name" content="KYH — Know Your Health">
 <meta property="og:title" content="Your daily routine — KYH">
-<meta property="og:description" content="Describe a typical day: sleep, work, movement and exercise. KYH estimates your daily energy use as you go. Your answers stay in your browser.">
+<meta property="og:description" content="Describe a typical day: sleep, work and movement. KYH estimates your daily energy use, then shortlists exercises matched to you. Stays in your browser.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/routine.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261113-9dedb40">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-584fd25">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,9 +33,11 @@
 
     <footer id="app-footer"></footer>
 
-    <script src="shared/data.activities.js?v=20261113-9dedb40"></script>
-    <script src="shared/utils.js?v=20261113-9dedb40"></script>
-<script src="shared/vault.js?v=20261113-9dedb40"></script>
+    <script src="shared/data.activities.js?v=20261121-584fd25"></script>
+    <script src="shared/data.exercises.js?v=20261121-584fd25"></script>
+    <script src="shared/utils.js?v=20261121-584fd25"></script>
+    <script src="shared/movement-plan.js?v=20261121-584fd25"></script>
+<script src="shared/vault.js?v=20261121-584fd25"></script>
     <script>
       const state = loadState();
       const profile = state.profile;
@@ -248,8 +250,10 @@
           <div class="validation-msg alert-banner" id="time-msg" aria-live="polite"></div>
           <div class="page-footer-nav">
             <a href="#" id="back-btn" class="btn secondary">&larr; Back</a>
-            <button type="button" class="btn" id="continue-btn">Get Movement Plan &rarr;</button>
-          </div>`;
+            <a href="#" id="skip-btn" class="btn secondary">Skip routine and exercises &rarr;</a>
+            <button type="button" class="btn" id="continue-btn">Show my movement plan &darr;</button>
+          </div>
+          <div id="movement-plan" style="display:none;margin-top:48px;"></div>`;
         if (habits.steps != null) document.getElementById('hab-steps').value = habits.steps;
         if (habits.sun != null) document.getElementById('hab-sun').value = habits.sun;
         if (habits.dinner != null) document.getElementById('hab-dinner').value = habits.dinner;
@@ -281,8 +285,29 @@
           const L = ledger();
           if (L.logged > 24.1) return fail(`You have described ${L.logged.toFixed(1)} hours in a day. Please shorten something so it fits in 24.`);
           msg.textContent = '';
-          goTo('routine-plan.html', Object.assign({}, state, { routine: buildRoutine() }));
+          showPlan(true);
         });
+        document.getElementById('skip-btn').addEventListener('click', e => {
+          e.preventDefault();
+          goTo('diet.html', state);
+        });
+        // Deep link from the old Exercises page: #plan reopens the plan if the day was already confirmed.
+        if (/(^|[#&])plan(&|$)/.test(location.hash) && state.routine && state.routine.activitiesConfirmed) showPlan(false);
+      }
+
+      /* The exercise shortlist now lives on this page, under the day builder. */
+      let planShown = false;
+      function showPlan(scroll) {
+        const box = document.getElementById('movement-plan');
+        if (planShown) { if (scroll) box.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        planShown = true;
+        const next = Object.assign({}, state, { routine: buildRoutine() });
+        persistState(next);
+        box.style.display = '';
+        window.mountMovementPlan(box, next, exercises => goTo('diet.html', Object.assign({}, state, { routine: buildRoutine(), exercises })));
+        document.getElementById('continue-btn').textContent = 'Go to my movement plan \u2193';
+        document.getElementById('skip-btn').style.display = 'none';
+        if (scroll) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       if (!profile) {

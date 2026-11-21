@@ -70,14 +70,14 @@ def inject(page, base, state, then):
     page.wait_for_timeout(700)
 
 
-def card_names(page):
-    return page.eval_on_selector_all('.test-card', 'els => els.map(e => e.dataset.exercise || e.dataset.test || "")')
+def card_names(page, scope=''):
+    return page.eval_on_selector_all(f'{scope} .test-card', 'els => els.map(e => e.dataset.exercise || e.dataset.test || "")')
 
 
-def answer_all_no(page):
-    n = page.locator('.test-card').count()
+def answer_all_no(page, scope=''):
+    n = page.locator(f'{scope} .test-card').count()
     for i in range(n):
-        page.locator(f'label[for$="-{i}-no"]').first.click()
+        page.locator(f'{scope} label[for$="-{i}-no"]').first.click()
     return n
 
 
@@ -143,36 +143,36 @@ def full_flow(page, base, problems):
     nudge = page.inner_text('#rt-nudge')
     check('Not in the daily total' in nudge and re.search(r'about [\d,]+ kcal each time', nudge), 'routine: weekly activity priced and kept out of the daily total', nudge[-200:])
     page.locator('#continue-btn').click()
-    page.wait_for_url(re.compile(r'routine-plan\.html'))
+    page.wait_for_selector('#movement-plan .test-card')
+    check('routine.html' in page.url, 'routine: the exercise plan opens on the same page, no new screen')
     routine = state_of(page)['routine']
     check(routine.get('estimatedCalories', 0) > 1000, 'routine: daily burn saved', routine.get('estimatedCalories'))
     check(any(a.get('freq') == 'weekly' for a in routine['activities']), 'routine: weekly activity saved')
 
-    # --- exercises
-    page.wait_for_selector('.test-card')
-    check(page.inner_text('h2').strip() == 'Your matched exercises', 'exercises: heading says "matched"', page.inner_text('h2'))
-    n = answer_all_no(page)
+    # --- exercises (same page, under the day)
+    check(page.inner_text('#movement-plan h2').strip() == 'Your matched exercises', 'exercises: heading says "matched"', page.inner_text('#movement-plan h2'))
+    n = page.locator('#movement-plan .test-card').count()
     check(n == 10, 'exercises: ten cards', n)
-    page.locator('#continue-btn').click()
+    page.locator('#mp-continue-btn').click()          # answers are optional: continue with none given
     page.wait_for_url(re.compile(r'diet\.html'))
 
-    # --- diet: the six food-quality markers are required; nutrients use the soft gate (continue anyway)
+    # --- diet: every answer is optional; targets open in place
     page.wait_for_selector('#nutrient-list .test-card')
+    check('Continue anyway' not in page.inner_text('body'), 'diet: no "continue anyway" gate')
     page.locator('#continue-btn').click()
-    check('Please answer all Food Quality markers' in page.inner_text('#answer-counter'), 'diet: unanswered food markers are asked for')
-    marker_foods = page.eval_on_selector_all('.fq-desktop-only input[type=radio][data-food]', 'els => [...new Set(els.map(e => e.dataset.food))]')
-    for food in marker_foods:
-        page.locator(f'.fq-desktop-only input[data-food="{food}"][value="1-2x/Wk"]').check()
-    check(len(marker_foods) == 6, 'diet: six food markers answered', marker_foods)
-    page.locator('#continue-btn').click()
-    page.locator('#soft-gate-continue-link').click()
-    page.wait_for_url(re.compile(r'diet-synthesis\.html'))
+    page.wait_for_selector('#diet-targets .test-card')
+    check('diet.html' in page.url and page.locator('#diet-targets').is_visible(), 'diet: targets open on the same page, no new screen')
     diet = state_of(page)['diet']
     check(diet.get('target', {}).get('cal', 0) >= 1200, 'diet: calorie target at or above the intake floor', diet.get('target'))
+    # changing an answer clears the targets so the screen never disagrees with what is saved
+    page.locator('.fq-desktop-only input[type=radio][data-food]').first.check()
+    page.wait_for_timeout(200)
+    check(not page.locator('#diet-targets').is_visible(), 'diet: changing an answer clears the targets')
+    page.locator('#continue-btn').click()
+    page.wait_for_selector('#dt-finish')
 
     # --- diet synthesis -> summary
-    page.wait_for_selector('a.btn:has-text("Finish")')
-    page.locator('a.btn:has-text("Finish")').click()
+    page.locator('#dt-finish').click()
     page.wait_for_url(re.compile(r'summary\.html'))
     page.wait_for_timeout(800)
     body = page.inner_text('body')
@@ -198,10 +198,13 @@ def regressions(page, base):
     seniors = ("Farmer's Walk (Loaded Carries)", 'Shadow Boxing / Light Sparring (Seated or Standing)', 'Static Lunge (Split Squat Hold)')
     shown = {}
     for age in (64, 65):
-        inject(page, base, {'profile': dict(prof, age=age), 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'routine-plan.html')
-        names = card_names(page)
+        confirmed = {'activitiesConfirmed': True, 'activities': [{'id': 'act_011', 'freq': 'daily', 'hours': 7, 'mins': 0}], 'estimatedCalories': 2000}
+        inject(page, base, {'profile': dict(prof, age=age), 'vitals': {}, 'diagnostics': {}, 'routine': confirmed}, 'routine-plan.html')
+        page.wait_for_selector('#movement-plan .test-card')
+        names = card_names(page, '#movement-plan')
         shown[age] = [x for x in seniors if x in names]
         check(len(names) == 10, f'age {age}: exercise list still fills 10', len(names))
+        check('routine.html' in page.url, f'age {age}: the old Exercises address forwards to the Routine page')
         check('Senior Citizen' not in page.inner_text('body'), f'age {age}: derived flag is never printed')
     check(len(shown[64]) >= 1, 'age 64: moderate-to-high items can still appear', shown[64])
     check(shown[65] == [], 'age 65: moderate-to-high items are hidden', shown[65])
@@ -394,6 +397,39 @@ def lighter_start(browser, base):
     page.close()
 
 
+def merged_steps(browser, base):
+    print('\nMerged steps and skipping')
+    page = browser.new_page(viewport={'width': 1000, 'height': 900})
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': []}
+    # skip routine and exercises -> diet
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}}, 'routine.html')
+    page.wait_for_selector('#skip-btn')
+    page.locator('#skip-btn').click()
+    page.wait_for_url(re.compile(r'diet\.html'))
+    check(True, 'routine: the whole section can be skipped')
+    # diet without a dietary preference: asked in place, not sent back
+    page.wait_for_selector('#d-type')
+    page.locator('#continue-btn').click()
+    check('dietary preference' in page.inner_text('#answer-counter').lower() and not page.locator('#diet-targets').is_visible(), 'diet: targets wait for a dietary preference')
+    page.select_option('#d-type', 'Non-Vegetarian')
+    page.locator('#continue-btn').click()
+    page.wait_for_selector('#diet-targets .test-card')
+    check(page.locator('#diet-targets .test-card').count() > 3, 'diet: targets work with no routine and no answers (assumed burn)')
+    # skip diet -> findings, with nothing from routine or diet
+    inject(page, base, {'profile': dict(prof, dietType='Vegetarian'), 'vitals': {}, 'diagnostics': {}}, 'diet.html')
+    page.wait_for_selector('#skip-btn')
+    page.locator('#skip-btn').click()
+    page.wait_for_url(re.compile(r'summary\.html'))
+    page.wait_for_timeout(900)
+    body = page.inner_text('body')
+    check(len(body) > 400 and 'undefined' not in body and 'NaN' not in body, 'summary: opens cleanly with routine, exercises and diet all skipped')
+    # old diet address forwards
+    inject(page, base, {'profile': dict(prof, dietType='Vegetarian'), 'vitals': {}, 'diagnostics': {}}, 'diet-synthesis.html')
+    page.wait_for_selector('#d-type')
+    check('diet.html' in page.url, 'old Diet synthesis address forwards to the Diet page')
+    page.close()
+
+
 def main():
     headed = '--headed' in sys.argv
     problems = []
@@ -413,6 +449,10 @@ def main():
             save_and_open(browser, base)
         except Exception as e:
             check(False, 'save and open stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            merged_steps(browser, base)
+        except Exception as e:
+            check(False, 'merged steps checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             lighter_start(browser, base)
         except Exception as e:
