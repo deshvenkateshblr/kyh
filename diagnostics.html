@@ -5,16 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-a782df6">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-9efa0c3">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
 .refine-panel .refine-step-h { font-size:15px; margin-bottom:4px; }
+.refine-panel .refine-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:16px; padding-top:14px; }
+.refine-panel .refine-back { background:none; border:0; padding:6px 2px; cursor:pointer; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; }
+.refine-panel .refine-step { border-top:0 !important; margin-top:0 !important; padding-top:0 !important; }
 .refine-panel .refine-why { font-size:13.5px; line-height:1.55; color:var(--muted); margin:2px 0 10px; }
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-a782df6">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-9efa0c3">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -22,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-a782df6">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-9efa0c3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -40,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-a782df6"></script>
-<script src="shared/utils.js?v=20261121-a782df6"></script>
-<script src="shared/data.symptoms.js?v=20261121-a782df6"></script>
-<script src="shared/vault.js?v=20261121-a782df6"></script>
+<script src="shared/data.diagnostics.js?v=20261121-9efa0c3"></script>
+<script src="shared/utils.js?v=20261121-9efa0c3"></script>
+<script src="shared/data.symptoms.js?v=20261121-9efa0c3"></script>
+<script src="shared/vault.js?v=20261121-9efa0c3"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -347,7 +350,6 @@ function renderResultsStage(){
 
   let cardsHtml = '';
   top10.forEach((d, i)=>{
-    const watchFor = (d.symptoms && d.symptoms.length) ? d.symptoms.slice(0,4).join(', ') : NO_SYMPTOM_FALLBACK[d.group];
     const prev = prevAnswers[d.test] || {};
     const doneYes = prev.done === true;
     const doneNo = prev.done === false;
@@ -358,7 +360,7 @@ function renderResultsStage(){
       d.viaRiskGroup ? [d.riskGroupReason] : []
     );
     const originTag = matchReasons.length
-      ? `<span class="tag ok">Matches: ${esc(matchReasons.join(', '))}</span>`
+      ? `<span class="tag ok">${esc(d.bySymptom ? 'For: ' : '')}${esc(matchReasons.join(', '))}</span>`
       : `<span class="tag">${esc(d.group)}</span>`;
 
     // ADDED: UI chips for Sample Type and Prep
@@ -390,7 +392,6 @@ function renderResultsStage(){
           <div style="display:flex; gap:6px; margin-top:6px;">
             ${sampleChip} ${prepChip}
           </div>
-          <div class="symptom" style="margin-top:8px;"><b>Watch for:</b> ${esc(watchFor)}</div>
         </div>
         ${originTag}
       </div>
@@ -417,7 +418,6 @@ function renderResultsStage(){
     </div>`;
   });
 
-  const symptomDrivenCount = top10.filter(d=>d.bySymptom).length;
 
   // Only take credit for symptoms that actually landed a test in this list —
   // a symptom can fail to match if every test for it is gated by age/risk
@@ -430,15 +430,10 @@ function renderResultsStage(){
 
   let symptomLine;
   if (!symptoms.length) {
-    symptomLine = `Your starter list, based on your age and sex. Take it to your doctor as it is, or <a href="symptoms.html">add symptoms to sharpen it &rarr;</a>`;
+    symptomLine = `Your starter list, based on your age and sex. Take it to your doctor as it is, or sharpen it below.`;
   } else {
-    const basedOnText = matchedSymptomsList.length
-      ? `Based on: ${matchedSymptomsList.map(esc).join(', ')}`
-      : `Based on your risk profile`;
-    const unmatchedNote = unmatchedSymptomsList.length
-      ? ` &middot; ${unmatchedSymptomsList.map(esc).join(', ')} ${unmatchedSymptomsList.length > 1 ? "don't have a dedicated test for your profile" : "doesn't have a dedicated test for your profile"} &mdash; it's covered by the general screening below`
-      : '';
-    symptomLine = `${basedOnText}${unmatchedNote} &middot; <a href="symptoms.html">adjust on your symptoms &rarr;</a>`;
+    symptomLine = `Chosen for your age, sex and profile, and the symptoms you added.`
+      + (unmatchedSymptomsList.length ? ` <span style="color:var(--muted);">No dedicated test for ${unmatchedSymptomsList.map(esc).join(', ')}; the general screening covers ${unmatchedSymptomsList.length > 1 ? 'them' : 'it'}.</span>` : '');
   }
 
   document.getElementById('res-head').innerHTML = `
@@ -447,7 +442,7 @@ function renderResultsStage(){
   </div>
   <p class="lede">${symptomLine}</p>`;
   document.getElementById('res-list').innerHTML = `
-  <p class="section-sub" style="display:block;margin-bottom:14px;">${matches.length} tests matched your profile &middot; ${symptomDrivenCount} pulled in directly from your symptoms, the rest fill out your baseline risk panel</p>
+  <p class="section-sub" style="display:block;margin-bottom:14px;">Showing ${top10.length} of the ${matches.length} tests that fit your profile</p>
   <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
     <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few tests unanswered</div>
     <div style="font-size:14px;line-height:1.6;">
@@ -582,7 +577,7 @@ function renderRefinePanel() {
     <p id="refine-summary" style="margin:8px 0 12px;font-size:14.5px;line-height:1.6;">${refineSummaryHtml()}</p>
     <button type="button" class="btn secondary" id="refine-toggle" aria-expanded="${open}" aria-controls="refine-body">${open ? 'Close' : 'Refine my list &darr;'}</button>
     <div id="refine-body" ${open ? '' : 'hidden'} style="margin-top:20px;">
-      <div class="refine-step">
+      <div class="refine-step" data-step="0">
         <div class="refine-step-h"><b>1 &middot; Body size (BMI)</b></div>
         <p class="refine-why">BMI decides whether metabolic tests, such as blood sugar and cholesterol, are on your list. It is the biggest single change.</p>
         <div class="field-row">
@@ -594,7 +589,7 @@ function renderRefinePanel() {
         <p class="refine-why" id="rf-bmi" style="margin-top:8px;"></p>
         <p class="refine-why" style="margin-top:2px;">Use feet, inches or pounds, or add waist: <a href="profile.html#refine&amp;next=diagnostics.html">open the full form &rarr;</a></p>
       </div>
-      <div class="refine-step">
+      <div class="refine-step" data-step="1" hidden>
         <div class="refine-step-h"><b>2 &middot; Symptoms</b></div>
         <p class="refine-why">Anything bothering you now pulls in the tests that look into it. Skip it if nothing does.</p>
         <input type="text" id="rf-sym-search" class="field" style="width:100%;box-sizing:border-box;padding:10px 12px;font-size:15px;" placeholder="Search symptoms&hellip;" autocomplete="off">
@@ -602,23 +597,40 @@ function renderRefinePanel() {
         <div class="chips-row" id="rf-sym-chips" style="margin-top:10px;"></div>
         <p class="refine-why" style="margin-top:6px;"><a href="symptoms.html">Browse every symptom and add known vitals &rarr;</a></p>
       </div>
-      <div class="refine-step">
+      <div class="refine-step" data-step="2" hidden>
         <div class="refine-step-h"><b>3 &middot; Dietary preference</b></div>
         <p class="refine-why">A vegetarian, vegan or Jain diet adds B12 and iron checks, and the diet step later starts from it.</p>
         <div class="field" style="max-width:320px;"><label class="intake-label" for="rf-diet">Dietary preference</label>
           <select id="rf-diet"><option value="">&mdash; Skip &mdash;</option>${DIET_CHOICES.map(x => `<option value="${x}" ${profile.dietType === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      </div>
+      <div class="refine-nav">
+        <button type="button" class="refine-back" id="refine-back">&larr; Back</button>
+        <span id="refine-count" class="refine-why" style="margin:0;"></span>
+        <button type="button" class="btn secondary" id="refine-next">Skip &rarr;</button>
       </div>
     </div>
     <p id="refine-live" role="status" aria-live="polite" class="refine-why" style="margin:12px 0 0;"></p>
   </section>`;
 
   const toggle = document.getElementById('refine-toggle'), body = document.getElementById('refine-body');
-  toggle.addEventListener('click', () => {
-    const show = body.hidden;
+  function setOpen(show) {
     body.hidden = !show;
     toggle.setAttribute('aria-expanded', String(show));
-    toggle.innerHTML = show ? 'Close' : 'Refine my list &darr;';
+    toggle.innerHTML = show ? 'Close' : (hasAnyRefinement() ? 'Change my answers &darr;' : 'Refine my list &darr;');
+  }
+  toggle.addEventListener('click', () => {
+    const show = body.hidden;
+    if (show) showStep(firstOpenStep());    // start with the first thing not yet answered
+    setOpen(show);
   });
+  document.getElementById('refine-back').addEventListener('click', () => showStep(refineStep - 1));
+  document.getElementById('refine-next').addEventListener('click', () => {
+    if (refineStep === 0) { clearTimeout(refineTimer); applyBody(); }
+    if (refineStep < 2) showStep(refineStep + 1);
+    else { setOpen(false); document.getElementById('refine').scrollIntoView({ block: 'nearest' }); }
+  });
+  showStep(open ? firstOpenStep() : 0);
+  setOpen(open);
   document.getElementById('rf-height').addEventListener('input', onBodyInput);
   document.getElementById('rf-weight').addEventListener('input', onBodyInput);
   document.getElementById('rf-diet').addEventListener('change', e => {
@@ -635,6 +647,23 @@ function renderRefinePanel() {
   });
   renderSymUi();
   showBmi();
+}
+
+let refineStep = 0;
+function hasAnyRefinement() { return !!(profile.bmi || (profile.symptoms || []).length || profile.dietType); }
+function firstOpenStep() {
+  if (!profile.bmi) return 0;
+  if (!(profile.symptoms || []).length) return 1;
+  if (!profile.dietType) return 2;
+  return 0;
+}
+function showStep(n) {
+  refineStep = Math.max(0, Math.min(2, n));
+  document.querySelectorAll('#refine-body .refine-step').forEach(el => { el.hidden = Number(el.dataset.step) !== refineStep; });
+  document.getElementById('refine-count').textContent = `Step ${refineStep + 1} of 3`;
+  document.getElementById('refine-back').style.visibility = refineStep === 0 ? 'hidden' : 'visible';
+  const filled = [!!profile.bmi, (profile.symptoms || []).length > 0, !!profile.dietType][refineStep];
+  document.getElementById('refine-next').innerHTML = refineStep === 2 ? 'Done' : (filled ? 'Next &rarr;' : 'Skip &rarr;');
 }
 
 function renderSymUi() {
@@ -706,6 +735,7 @@ function commitRefine(what) {
   renderResultsStage();
   window.scrollTo(0, y);
   document.getElementById('refine-summary').innerHTML = refineSummaryHtml();
+  showStep(refineStep);
   const added = currentTop.filter(t => !before.includes(t)), dropped = before.filter(t => !currentTop.includes(t));
   const live = document.getElementById('refine-live');
   live.textContent = what + ' ' + (added.length || dropped.length
@@ -721,6 +751,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-a782df6"></script>
+<script src="shared/statusbar.js?v=20261121-9efa0c3"></script>
 </body>
 </html>

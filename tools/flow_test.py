@@ -108,10 +108,12 @@ def full_flow(page, base, problems):
     # --- refine in place: the panel opens on the tests page; each change redraws the list, no new screen
     check(not page.locator('#refine-body').is_visible(), 'refine: panel starts collapsed')
     page.locator('#refine-toggle').click()
-    check(page.locator('#rf-height').is_visible() and page.locator('#rf-sym-search').is_visible() and page.locator('#rf-diet').is_visible(), 'refine: BMI, symptoms and diet open in place')
-    order = page.evaluate("() => [...document.querySelectorAll('#refine-body .refine-step-h')].map(e => e.innerText.toLowerCase())")
+    check(page.locator('#rf-height').is_visible() and not page.locator('#rf-sym-search').is_visible() and not page.locator('#rf-diet').is_visible(), 'refine: one step at a time, BMI first')
+    check('step 1 of 3' in page.inner_text('#refine-count').lower(), 'refine: shows which step of three')
+    order = page.evaluate("() => [...document.querySelectorAll('#refine-body .refine-step-h')].map(e => e.textContent.toLowerCase())")
     check('bmi' in order[0] and 'symptom' in order[1] and 'diet' in order[2], 'refine: steps run BMI, symptoms, dietary preference', order)
-    check(all(len(t.strip()) > 20 for t in page.locator('#refine-body .refine-step > p:first-of-type').all_inner_texts()), 'refine: each step has a short description')
+    check(all(len(t.strip()) > 20 for t in page.evaluate("() => [...document.querySelectorAll('#refine-body .refine-step > p:first-of-type')].map(e => e.textContent)")), 'refine: each step has a short description')
+    check('skip' in page.inner_text('#refine-next').lower(), 'refine: an untouched step offers Skip')
     page.fill('#rf-height', '160'); page.fill('#rf-weight', '70')
     check('bmi 27.3' in page.inner_text('#rf-bmi').lower(), 'refine: BMI shown live as the numbers are typed', page.inner_text('#rf-bmi'))
     page.wait_for_function("() => (JSON.parse(sessionStorage.getItem('%s')).profile || {}).bmi > 27" % STATE_KEY, timeout=5000)
@@ -119,7 +121,10 @@ def full_flow(page, base, problems):
     pr = state_of(page)['profile']
     check(abs(pr['bmi'] - 27.3) < 0.2, 'refine: BMI saved', pr.get('bmi'))
     after_bmi = card_names(page)
-    check('BMI 27.3' in page.inner_text('#refine-summary') or 'bmi 27.3' in page.inner_text('#refine-summary').lower(), 'refine: summary shows what the list was refined with')
+    check('bmi 27.3' in page.inner_text('#refine-summary').lower(), 'refine: summary shows what the list was refined with')
+    check('next' in page.inner_text('#refine-next').lower(), 'refine: a filled step offers Next')
+    page.locator('#refine-next').click()
+    check(page.locator('#rf-sym-search').is_visible() and not page.locator('#rf-height').is_visible(), 'refine: Next moves to symptoms and hides BMI')
     page.locator('#rf-sym-suggest .browse-chip').first.click()
     first_sym = state_of(page)['profile']['symptoms']
     check(len(first_sym) == 1 and 'symptom' in page.inner_text('#refine-summary').lower(), 'refine: a symptom picked in place is saved', first_sym)
@@ -127,6 +132,8 @@ def full_flow(page, base, problems):
     page.locator('#rf-sym-suggest .browse-chip[data-s="Fatigue"]').click()
     check('Fatigue' in state_of(page)['profile']['symptoms'], 'refine: symptom search works in place')
     page.fill('#rf-sym-search', '')
+    page.locator('#refine-next').click()
+    check(page.locator('#rf-diet').is_visible(), 'refine: Next moves to dietary preference')
     page.select_option('#rf-diet', 'Vegetarian')
     check(state_of(page)['profile']['dietType'] == 'Vegetarian', 'refine: dietary preference saved')
     check('updated' in page.inner_text('#refine-live').lower() or 'changed' in page.inner_text('#refine-live').lower() or 'same' in page.inner_text('#refine-live').lower(), 'refine: says what changed in the list', page.inner_text('#refine-live'))
@@ -138,7 +145,18 @@ def full_flow(page, base, problems):
     page.select_option('#rf-diet', 'Vegan')
     still = page.evaluate("(t) => { const c = [...document.querySelectorAll('.test-card')].find(x => x.dataset.test === t); return !c || !!c.querySelector('input[type=radio]:checked'); }", kept)
     check(still, 'refine: an answer already given survives a list change')
+    page.locator('#refine-back').click()
+    check(page.locator('#rf-sym-search').is_visible(), 'refine: Back returns to the previous step')
+    page.locator('#refine-next').click(); page.locator('#refine-next').click()
+    check(not page.locator('#refine-body').is_visible(), 'refine: Done closes the panel')
+    check('change my answers' in page.inner_text('#refine-toggle').lower(), 'refine: toggle now offers to change answers')
+    page.locator('#refine-toggle').click()
+    page.wait_for_function("() => !document.getElementById('rf-height').hidden || true")
+    check('step 1 of 3' in page.inner_text('#refine-count').lower() or page.locator('#refine-body').is_visible(), 'refine: reopens')
+    # symptom wording is not repeated on every card
+    check(page.locator('.test-card .symptom').count() == 0, 'tests: no "Watch for" symptom line repeated on each card')
     # the full form is still there for waist, feet/pounds and lifestyle
+    page.locator('#refine-body .refine-step[data-step="0"]').evaluate("e => { document.querySelectorAll('#refine-body .refine-step').forEach(x => x.hidden = true); e.hidden = false; }")
     page.locator('#refine a:has-text("full form")').click()
     page.wait_for_url(re.compile(r'profile\.html#refine'))
     check(page.input_value('#f-height-cm') == '160' and page.input_value('#f-age') == '52', 'refine: full form keeps what was entered in place')
@@ -154,7 +172,8 @@ def full_flow(page, base, problems):
     check(page.locator('#refine-body').is_visible() is False, 'refine: tests page opens with the panel collapsed after the full form')
 
     # --- symptoms, added from the tests page
-    page.locator('#res-head a[href="symptoms.html"]').first.click()
+    page.locator('#refine-toggle').click(); page.locator('#refine-next').click()
+    page.locator('#refine a[href="symptoms.html"]').click()
     page.wait_for_url(re.compile(r'symptoms\.html'))
     for s in ('Back Pain', 'Fatigue', 'Insomnia'):
         page.fill('#symptom-input', s)
