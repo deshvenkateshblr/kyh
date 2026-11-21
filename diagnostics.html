@@ -5,11 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261121-d23ac24">
+<link rel="stylesheet" href="shared/styles.css?v=20261121-ec99c75">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
 .refine-panel .refine-step-h { font-size:15px; margin-bottom:4px; }
+.tp-bar { margin:6px 0 14px; }
+.tp-pills { display:flex; flex-wrap:wrap; gap:4px; }
+.tp-pill { min-width:31px; height:31px; padding:0 4px; border:1px solid var(--line); background:#fff; color:var(--muted); font:12px var(--mono, monospace); border-radius:16px; cursor:pointer; }
+.tp-pill.done { background:var(--teal); border-color:var(--teal); color:#fff; }
+.tp-pill.cur { outline:2px solid var(--ink, #1f2a24); outline-offset:1px; }
+.tp-meta { display:flex; justify-content:space-between; gap:12px; margin-top:10px; font:12px var(--mono, monospace); color:var(--muted); }
+.tp-skip { text-align:center; margin:14px 0 4px; font-size:13px; }
 .refine-panel .refine-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:16px; padding-top:14px; }
 .refine-panel .refine-back { background:none; border:0; padding:6px 2px; cursor:pointer; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; }
 .refine-panel .refine-step { border-top:0 !important; margin-top:0 !important; padding-top:0 !important; }
@@ -17,7 +24,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-d23ac24">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261121-ec99c75">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +32,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-d23ac24">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261121-ec99c75">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +50,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261121-d23ac24"></script>
-<script src="shared/utils.js?v=20261121-d23ac24"></script>
-<script src="shared/data.symptoms.js?v=20261121-d23ac24"></script>
-<script src="shared/vault.js?v=20261121-d23ac24"></script>
+<script src="shared/data.diagnostics.js?v=20261121-ec99c75"></script>
+<script src="shared/utils.js?v=20261121-ec99c75"></script>
+<script src="shared/data.symptoms.js?v=20261121-ec99c75"></script>
+<script src="shared/vault.js?v=20261121-ec99c75"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -303,6 +310,8 @@ function isExcluded(d, userTraits) {
 }
 
 let currentTop = [];
+let testPage = 0;
+const TESTS_PER_PAGE = 2;
 
 function readAnswers() {
   const answers = {};
@@ -455,12 +464,19 @@ function renderResultsStage(){
       </a>
     </div>
   </div>
+  <div class="tp-bar">
+    <div id="tp-pills" class="tp-pills" aria-label="Jump to a test"></div>
+    <div class="tp-meta"><span id="tp-range"></span><span id="answer-counter"></span></div>
+  </div>
   <div id="cards">${cardsHtml}</div>
   <div class="page-footer-nav">
-    <a href="profile.html" class="btn secondary">&larr; Back</a>
-    <span id="answer-counter" style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 14px;white-space:nowrap;"></span>
-    <button class="btn" id="continue-btn">Continue to Routine &rarr;</button>
-  </div>`;
+    <a href="profile.html" class="btn secondary" id="tp-back">&larr; Back</a>
+    <button type="button" class="btn secondary" id="tp-prev" style="display:none;">&larr; Previous 2</button>
+    <button type="button" class="btn" id="tp-next">Next 2 &rarr;</button>
+    <button class="btn" id="continue-btn" style="display:none;">Continue to Routine &rarr;</button>
+  </div>
+  <p class="tp-skip"><a href="#" id="tp-skip">Skip the rest and go to Routine &rarr;</a></p>
+  `;
 
   document.querySelectorAll('.test-card').forEach((card, i)=>{
     const yes = card.querySelector(`#done-${i}-yes`);
@@ -502,6 +518,39 @@ function renderResultsStage(){
     if (e.target.type === 'radio') updateCounter();
   });
   updateCounter();
+
+  // ---- two tests at a time (all cards stay in the page so answers, counts and saving work as before) ----
+  const cardEls = [...document.querySelectorAll('.test-card')];
+  const pageTotal = Math.max(1, Math.ceil(cardEls.length / TESTS_PER_PAGE));
+  function showTestPage(n, jump) {
+    testPage = Math.max(0, Math.min(pageTotal - 1, n));
+    cardEls.forEach((c, i) => { c.style.display = Math.floor(i / TESTS_PER_PAGE) === testPage ? '' : 'none'; });
+    const from = testPage * TESTS_PER_PAGE + 1, to = Math.min(cardEls.length, from + TESTS_PER_PAGE - 1);
+    document.getElementById('tp-range').textContent = `Tests ${from}${to > from ? '\u2013' + to : ''} of ${cardEls.length}`;
+    const last = testPage === pageTotal - 1;
+    document.getElementById('tp-back').style.display = testPage === 0 ? '' : 'none';
+    document.getElementById('tp-prev').style.display = testPage === 0 ? 'none' : '';
+    document.getElementById('tp-next').style.display = last ? 'none' : '';
+    document.getElementById('continue-btn').style.display = last ? '' : 'none';
+    document.getElementById('tp-skip').parentElement.style.display = last ? 'none' : '';
+    paintPills();
+    if (jump) document.getElementById('tp-range').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function paintPills() {
+    document.getElementById('tp-pills').innerHTML = cardEls.map((c, i) => {
+      const done = !!c.querySelector('input[type=radio]:checked');
+      const cur = Math.floor(i / TESTS_PER_PAGE) === testPage;
+      return `<button type="button" class="tp-pill${done ? ' done' : ''}${cur ? ' cur' : ''}" data-i="${i}" aria-label="Test ${i + 1}: ${esc(cardEls[i].dataset.test)}${done ? ', answered' : ''}">${i + 1}</button>`;
+    }).join('');
+  }
+  document.getElementById('tp-pills').addEventListener('click', e => {
+    const b = e.target.closest('.tp-pill'); if (b) showTestPage(Math.floor(Number(b.dataset.i) / TESTS_PER_PAGE), true);
+  });
+  document.getElementById('cards').addEventListener('change', e => { if (e.target.type === 'radio') paintPills(); });
+  document.getElementById('tp-next').addEventListener('click', () => showTestPage(testPage + 1, true));
+  document.getElementById('tp-prev').addEventListener('click', () => showTestPage(testPage - 1, true));
+  document.getElementById('tp-skip').addEventListener('click', e => { e.preventDefault(); proceedToNext(); });
+  showTestPage(testPage, false);
 
   function proceedToNext() {
     const answers = readAnswers();
@@ -772,6 +821,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261121-d23ac24"></script>
+<script src="shared/statusbar.js?v=20261121-ec99c75"></script>
 </body>
 </html>

@@ -77,7 +77,10 @@ def card_names(page, scope=''):
 def answer_all_no(page, scope=''):
     n = page.locator(f'{scope} .test-card').count()
     for i in range(n):
-        page.locator(f'{scope} label[for$="-{i}-no"]').first.click()
+        lab = page.locator(f'{scope} label[for$="-{i}-no"]').first
+        while not lab.is_visible() and page.locator('#tp-next').is_visible():      # tests are shown two at a time
+            page.locator('#tp-next').click()
+        lab.click()
     return n
 
 
@@ -198,6 +201,20 @@ def full_flow(page, base, problems):
 
     # --- diagnostics
     page.wait_for_selector('.test-card')
+    vis = page.locator('.test-card:visible').count()
+    check(vis == 2, 'tests: two tests are shown at a time', vis)
+    check('tests 1' in page.inner_text('#tp-range').lower() and page.locator('.tp-pill').count() == page.locator('.test-card').count(), 'tests: range label and one numbered pill per test')
+    check(page.locator('#tp-next').is_visible() and not page.locator('#continue-btn').is_visible(), 'tests: Next 2 first, Continue only on the last page')
+    page.locator('label[for="done-0-no"]').click()
+    check('done' in page.locator('.tp-pill').first.get_attribute('class'), 'tests: an answered test marks its pill')
+    first_two = page.locator('.test-card:visible').evaluate_all('els => els.map(e => e.dataset.test)')
+    page.locator('#tp-next').click()
+    next_two = page.locator('.test-card:visible').evaluate_all('els => els.map(e => e.dataset.test)')
+    check(len(next_two) == 2 and not set(first_two) & set(next_two) and page.locator('#tp-prev').is_visible(), 'tests: Next 2 shows the next two and offers Previous', next_two)
+    page.locator('.tp-pill').last.click()
+    check(page.locator('#continue-btn').is_visible() and not page.locator('#tp-next').is_visible(), 'tests: the last page shows Continue, not Next')
+    page.locator('.tp-pill').first.click()
+    check(page.locator('.test-card:visible').evaluate_all('els => els.map(e => e.dataset.test)') == first_two, 'tests: a pill jumps back to its page')
     n = answer_all_no(page)
     check(0 < n <= 10, 'diagnostics: cards shown, at most 10', n)
     page.locator('#continue-btn').click()
