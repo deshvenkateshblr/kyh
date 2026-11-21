@@ -430,6 +430,55 @@ def merged_steps(browser, base):
     page.close()
 
 
+def status_bar(browser, base):
+    print('\nFixed bottom bar: version, Refresh, Feedback')
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None,
+            'symptoms': ['Back Pain'], 'dietType': 'Vegetarian', 'cuisine': 'Indian', 'medicalStatus': 'stable'}
+    ctx = browser.new_context(viewport={'width': 390, 'height': 800})      # a phone is the tightest case
+    page = ctx.new_page()
+    page.goto(base + 'about.html')
+    page.evaluate("([k, s]) => sessionStorage.setItem(k, JSON.stringify(s))", [STATE_KEY, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}])
+    bad = []
+    for pg in ('index', 'about', 'profile', 'symptoms', 'diagnostics', 'routine', 'diet', 'summary', 'nextsteps', 'not-ready'):
+        page.goto(base + pg + '.html'); page.wait_for_timeout(500)
+        info = page.evaluate("""() => { const b = document.getElementById('kyh-statusbar'); if (!b) return null;
+            const r = b.getBoundingClientRect(), cs = getComputedStyle(b);
+            return { pos: cs.position, h: Math.round(r.height), bottom: Math.round(innerHeight - r.bottom), wrap: b.scrollWidth <= b.clientWidth + 1,
+                     txt: b.innerText.replace(/[ \t\n]+/g, ' '), n: document.querySelectorAll('#kyh-statusbar').length,
+                     src: (document.querySelector('script[src*="statusbar.js"]') || {}).getAttribute && document.querySelector('script[src*="statusbar.js"]').getAttribute('src') }; }""")
+        ver = (info or {}).get('src', '') and info['src'].split('v=')[-1]
+        if not info or info['pos'] != 'fixed' or info['h'] > 36 or info['bottom'] != 0 or not info['wrap'] or info['n'] != 1 or ('v' + ver) not in info['txt'] \
+           or 'refresh' not in info['txt'].lower() or 'feedback' not in info['txt'].lower():
+            bad.append((pg, info))
+    check(not bad, 'bar on all 10 pages: fixed, one line, at the bottom, shows the build version, Refresh and Feedback', bad[:2])
+
+    # Feedback: opens an email to info@vividnova.com carrying only version and page, never answers
+    page.goto(base + 'profile.html'); page.wait_for_timeout(400)
+    href = page.get_attribute('#kyh-sb-feedback', 'href')
+    from urllib.parse import urlparse, parse_qs, unquote
+    u = urlparse(href); q = parse_qs(u.query)
+    check(u.scheme == 'mailto' and unquote(u.path) == 'info@vividnova.com', 'feedback: goes to info@vividnova.com', href[:60])
+    msg = (q.get('subject', [''])[0] + ' ' + q.get('body', [''])[0])
+    check('Version:' in msg and 'Page: profile' in msg, 'feedback: email carries the version and page', msg[-80:])
+    check(not any(w in msg for w in ('Back Pain', '172', 'Vegetarian', 'Male')), 'feedback: no health answers are put in the email')
+
+    # Refresh reloads and keeps the answers
+    page.evaluate("() => { window.__marker = 1; }")
+    page.locator('#kyh-sb-refresh').click()
+    page.wait_for_load_state('load'); page.wait_for_timeout(500)
+    check(page.evaluate("() => window.__marker") is None, 'refresh: the page reloads')
+    check((state_of(page) or {}).get('profile', {}).get('age') == 45, 'refresh: answers are still there afterwards')
+
+    # the bar never hides the Continue button, and does not print
+    page.goto(base + 'profile.html'); page.wait_for_timeout(400)
+    page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)"); page.wait_for_timeout(200)
+    gap = page.evaluate("() => { const c = document.querySelector('#profile-form button[type=submit]').getBoundingClientRect(), b = document.getElementById('kyh-statusbar').getBoundingClientRect(); return b.top - c.bottom; }")
+    check(gap >= 0, 'bar does not cover the Continue button at the end of the page', gap)
+    page.emulate_media(media='print')
+    check(page.evaluate("() => getComputedStyle(document.getElementById('kyh-statusbar')).display") == 'none', 'bar is hidden when printing')
+    ctx.close()
+
+
 def main():
     headed = '--headed' in sys.argv
     problems = []
@@ -449,6 +498,10 @@ def main():
             save_and_open(browser, base)
         except Exception as e:
             check(False, 'save and open stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            status_bar(browser, base)
+        except Exception as e:
+            check(False, 'status bar checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             merged_steps(browser, base)
         except Exception as e:

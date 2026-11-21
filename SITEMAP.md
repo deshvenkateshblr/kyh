@@ -39,6 +39,7 @@ index → profile → symptoms → diagnostics → routine (+ exercise plan) →
 | `insights.js` | Turns saved state into insight cards and the AI prompt context. |
 | `doctorbrief.js` | Builds the printable Doctor Brief. |
 | `summary-page.js` | Page logic for `summary.html`. |
+| `statusbar.js` | One-line fixed bar on every flow page: build version (read from its own `?v=` stamp), Refresh (reloads; answers are kept), Feedback (mailto info@vividnova.com carrying only version and page). Hidden when printing. |
 | `movement-plan.js` | `mountMovementPlan(root, state, onNext)`: the exercise shortlist, mounted inside `routine.html`. |
 | `diet-targets.js` | `mountDietTargets(root, state, onFinish)`: calorie, macro, water and nutrient targets, mounted inside `diet.html`. |
 | `icons.js` | Shared SVG icon set. |
