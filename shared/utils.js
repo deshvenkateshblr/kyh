@@ -651,12 +651,16 @@ function estimateTdeeFromActivities(activities, weightKg, defs, profile) {
    The factors sit inside the FAO/WHO/UNU "Human energy requirements" (2001/2004) activity-level bands
    (sedentary or light 1.40-1.69, moderately active 1.70-1.99, vigorous 2.00-2.40). The exact picks
    within each band are an editorial choice, NEEDS PHYSICIAN REVIEW, like the thresholds above.
+   Cross-checked against the hour-by-hour builder for one example adult (45, male, 172 cm, 80 kg): the two
+   agree within a few percent for light and on-your-feet days; sitting reads 6% higher here (the ledger's
+   sleep and TV values sit below the published 1.40 floor); hard physical work was set to 2.05 because the
+   ledger gave 2.19 and the vigorous band starts at 2.00.
    The range is the factor +/- 0.10: an honest width for a two-question estimate. */
 const DAY_TYPES = [
   { key: 'sit',   title: 'Mostly sitting',               eg: 'Desk job, studying, driving, working from home', pal: 1.40 },
   { key: 'light', title: 'Light on my feet',             eg: 'Teaching, shop or counter work, home with errands and chores', pal: 1.55 },
   { key: 'feet',  title: 'On my feet most of the day',   eg: 'Nursing, kitchen work, minding children, housework all day', pal: 1.70 },
-  { key: 'hard',  title: 'Physically hard work',         eg: 'Construction, farm labour, loading, delivery on foot or by bicycle', pal: 1.90 }
+  { key: 'hard',  title: 'Physically hard work',         eg: 'Construction, farm labour, loading, delivery on foot or by bicycle', pal: 2.05 }
 ];
 const EXERCISE_LEVELS = [
   { key: 'none', title: 'Rarely or never',      add: 0 },

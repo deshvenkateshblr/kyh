@@ -405,7 +405,7 @@ def quick_day(browser, base):
     page.wait_for_selector('#movement-plan .test-card')
     r = state_of(page)['routine']
     check(r.get('mode') == 'simple' and r.get('dayType') == 'hard' and r.get('exerciseDays') == '5+', 'quick: day type, exercise and mode saved', {k: r.get(k) for k in ('mode', 'dayType', 'exerciseDays')})
-    check(abs(r['estimatedCalories'] - resting * 2.05) < 3 and r['estimatedRange'][0] < r['estimatedCalories'] < r['estimatedRange'][1], 'quick: daily burn is resting energy x activity factor, with a range', (r['estimatedCalories'], r.get('estimatedRange')))
+    check(abs(r['estimatedCalories'] - resting * 2.20) < 3 and r['estimatedRange'][0] < r['estimatedCalories'] < r['estimatedRange'][1], 'quick: daily burn is resting energy x activity factor, with a range', (r['estimatedCalories'], r.get('estimatedRange')))
     check(r.get('activities') == [] and r.get('activitiesConfirmed') is True, 'quick: no invented hour-by-hour list')
     # reopening keeps the choices and the quick view
     page.goto(base + '/routine.html'); page.wait_for_selector('.dt-card')
