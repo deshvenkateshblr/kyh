@@ -176,13 +176,16 @@ function renderResultsStage() {
     const doingYes = prev.practicing === true;
     const doingNo  = prev.practicing === false;
 
-    const freqOpts = FREQ_OPTIONS.map(f =>
-      `<option value="${f}" ${prev.frequency === f ? 'selected' : ''}>${f}</option>`
-    ).join('');
+    // one tap: a frequency means "I already do it"; "Not yet" means "no"
+    const picked = doingNo ? 'Not yet' : (doingYes ? (prev.frequency || '') : '');
+    const freqRadios = FREQ_OPTIONS.map((f, k) => {
+      const id = f === 'Not yet' ? `prac-${i}-no` : `prac-${i}-f${k}`;
+      return `<input type="radio" name="prac-${i}" id="${id}" value="${esc(f)}" ${picked === f ? 'checked' : ''}><label for="${id}">${esc(f)}</label>`;
+    }).join('');
 
     const originTag = ex.bySymptom
-      ? `<span class="tag ok">Matches: ${esc(ex.viaSymptoms.join(', '))}</span>`
-      : `<span class="tag">${esc(ex.group)}</span>`;
+      ? `<span class="tag ok">For: ${esc(ex.viaSymptoms.join(', '))}</span>`
+      : '';
 
     const shownContra = (ex.contraindications || []).filter(c => !window.DERIVED_FLAGS.has(c));   // derived flags are not conditions to print
     const contraNote = shownContra.length
@@ -217,10 +220,6 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
       ? `<div id="video-wrap-${i}" class="demo-video-container" style="display: none;"></div>`
       : '';
 
-    // Build form tags as plain strings to prevent editor auto-formatting issues
-    const radioYes = '<input type="radio" name="prac-' + i + '" id="prac-' + i + '-yes" value="yes" ' + (doingYes ? 'checked' : '') + '>';
-    const radioNo  = '<input type="radio" name="prac-' + i + '" id="prac-' + i + '-no" value="no" ' + (doingNo ? 'checked' : '') + '>';
-    const selectTag = '<select class="freq-select" id="freq-' + i + '" aria-label="How often do you do ' + esc(ex.exercise) + '?" ' + (doingYes ? '' : 'disabled') + '>';
 
     const extendedText = ex.extended_info || ex.note;
     
@@ -248,12 +247,9 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
             <div class="test-desc">${esc(ex.note)}</div>
             <div class="meta-row">
                 ${originTag}
-                ${moveChip}
                 ${intensityChip}
                 ${equipmentChip}
-                ${profileChip}
             </div>
-            <div class="symptom"><b>Helpful for:</b> ${esc(watchFor)}</div>
             ${contraNote}
           </div>
 
@@ -268,43 +264,29 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
         </div>
       </div>
       <div class="answers">
-        <span class="intake-label" style="margin:0;">Currently practicing?</span>
-        <div class="radio-pair">
-          ${radioYes}
-          <label for="prac-${i}-yes">Yes</label>
-          ${radioNo}
-          <label for="prac-${i}-no">No</label>
-        </div>
-        ${selectTag}
-          <option value="">How often?</option>
-          ${freqOpts}
-        </select>
+        <span class="intake-label" style="margin:0;">How often do you do this?</span>
+        <div class="radio-pair decide-row">${freqRadios}</div>
       </div>
     </div>`;
    
     });
 
-    const symptomDrivenCount = top10.filter(e => e.bySymptom).length;
-    const symptomLine = symptoms.length
-    ? `Based on: ${symptoms.map(esc).join(', ')} &middot; <a href="symptoms.html">adjust symptoms &rarr;</a>`
-    : `No symptoms on file — showing a balanced movement baseline. <a href="symptoms.html">Add symptoms &rarr;</a>`;
-
-  main.innerHTML = `
+    main.innerHTML = `
   <div class="section-head">
     <h2>Your matched exercises</h2>
   </div>
-  <p class="lede">${symptomLine}</p>
-  <p class="section-sub" style="display:block;margin-bottom:14px;">
-    ${matches.length} exercises matched your profile
-    &middot; ${symptomDrivenCount} pulled in directly from your symptoms,
-    the rest fill out a balanced movement panel.
-    Contraindicated moves have been removed.
-  </p>
+  <p class="lede">Chosen for your age, sex and profile${symptoms.length ? ', and the symptoms you added' : ''}. Say how often you already do each one, or skip any you like.</p>
+  <div class="tp-bar">
+    <div id="mp-pills" class="tp-pills" aria-label="Jump to an exercise"></div>
+    <div class="tp-meta"><span id="mp-range"></span><span id="mp-answer-counter"></span></div>
+  </div>
   <div id="mp-cards">${cardsHtml}</div>
   <div class="page-footer-nav">
-    <span id="mp-answer-counter" style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 14px;white-space:nowrap;"></span>
-    <button class="btn" id="mp-continue-btn">Continue to Diet &rarr;</button>
-  </div>`;
+    <button type="button" class="btn secondary" id="mp-prev" style="display:none;">&larr; Previous 2</button>
+    <button type="button" class="btn" id="mp-next">Next 2 &rarr;</button>
+    <button class="btn" id="mp-continue-btn" style="display:none;">Continue to Diet &rarr;</button>
+  </div>
+  <p class="tp-skip"><a href="#" id="mp-skip">Skip the rest and go to Diet &rarr;</a></p>`;
       // Wire up Video Demo Accordions with Content Swap
       document.querySelectorAll('.demo-toggle-btn').forEach(btn => {
       btn.addEventListener('click', function() {
@@ -351,45 +333,53 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
       });
       });
 
-      // Wire Yes/No → enable/disable frequency select
-      root.querySelectorAll('.test-card').forEach((card, i) => {
-      const yes = card.querySelector(`#prac-${i}-yes`);
-      const no  = card.querySelector(`#prac-${i}-no`);
-      const sel = card.querySelector(`#freq-${i}`);
-
-      yes.addEventListener('change', () => { sel.disabled = false; updateCounter(); });
-      no.addEventListener('change', () => {
-      sel.disabled = true;
-      sel.value = '';
-      updateCounter();
-      });
-      });
-
-      // Answers are optional: a live counter, no gate.
-      function countAnswered() {
-        return [...root.querySelectorAll('.test-card')]
-          .filter(card => card.querySelector('input[type=radio]:checked')).length;
-      }
+      // Answers are optional. Two exercises are shown at a time; every card stays in the page so counts and saving are unchanged.
+      const cardEls = [...root.querySelectorAll('.test-card')];
+      const PER = 2, pages = Math.max(1, Math.ceil(cardEls.length / PER));
+      let page = 0;
+      const picked = c => { const r = c.querySelector('input[type=radio]:checked'); return r ? r.value : ''; };
       function updateCounter() {
-        const n = countAnswered(), total = root.querySelectorAll('.test-card').length;
+        const n = cardEls.filter(c => picked(c)).length;
         const el = document.getElementById('mp-answer-counter');
-        if (!el) return;
-        el.textContent = n === total ? '' : `${n} of ${total} answered (optional)`;
+        if (el) el.textContent = n === cardEls.length ? '' : `${n} of ${cardEls.length} answered (optional)`;
       }
+      function paintPills() {
+        document.getElementById('mp-pills').innerHTML = cardEls.map((c, i) => {
+          const v = picked(c);
+          const cls = v ? (v === 'Not yet' ? ' skip' : ' done') : '';
+          const cur = Math.floor(i / PER) === page;
+          return `<button type="button" class="tp-pill${cls}${cur ? ' cur' : ''}" data-i="${i}" aria-label="Exercise ${i + 1}: ${esc(c.dataset.exercise)}">${i + 1}</button>`;
+        }).join('');
+      }
+      function showPage(n, jump) {
+        page = Math.max(0, Math.min(pages - 1, n));
+        cardEls.forEach((c, i) => { c.style.display = Math.floor(i / PER) === page ? '' : 'none'; });
+        const from = page * PER + 1, to = Math.min(cardEls.length, from + PER - 1);
+        document.getElementById('mp-range').textContent = `Exercises ${from}${to > from ? '\u2013' + to : ''} of ${cardEls.length}`;
+        const last = page === pages - 1;
+        document.getElementById('mp-prev').style.display = page === 0 ? 'none' : '';
+        document.getElementById('mp-next').style.display = last ? 'none' : '';
+        document.getElementById('mp-continue-btn').style.display = last ? '' : 'none';
+        document.getElementById('mp-skip').parentElement.style.display = last ? 'none' : '';
+        paintPills();
+        if (jump) document.getElementById('mp-range').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+      document.getElementById('mp-pills').addEventListener('click', e => { const b = e.target.closest('.tp-pill'); if (b) showPage(Math.floor(Number(b.dataset.i) / PER), true); });
+      document.getElementById('mp-next').addEventListener('click', () => showPage(page + 1, true));
+      document.getElementById('mp-prev').addEventListener('click', () => showPage(page - 1, true));
+      document.getElementById('mp-skip').addEventListener('click', e => { e.preventDefault(); proceedToNext(); });
+      root.querySelector('#mp-cards').addEventListener('change', e => { if (e.target.type === 'radio') { updateCounter(); paintPills(); } });
       updateCounter();
+      showPage(0, false);
 
       function proceedToNext() {
       const answers = {};
       root.querySelectorAll('.test-card').forEach((card, i) => {
       const name = card.dataset.exercise;
-      const yesChecked = card.querySelector(`#prac-${i}-yes`).checked;
-      const noChecked  = card.querySelector(`#prac-${i}-no`).checked;
-      const frequency  = card.querySelector(`#freq-${i}`).value;
-      if (yesChecked || noChecked) {
-      answers[name] = {
-      practicing: yesChecked,
-      frequency: yesChecked ? (frequency || null) : null
-      };
+      const v = picked(card);
+      if (v) {
+        const yes = v !== 'Not yet';
+        answers[name] = { practicing: yes, frequency: yes ? v : null };
       }
       });
       const exercises = {

@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
   <title>Your diet: food and nutrient check — KYH</title>
-  <link rel="stylesheet" href="shared/styles.css?v=20261122-fb74bc7">
+  <link rel="stylesheet" href="shared/styles.css?v=20261122-e471af7">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-fb74bc7">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-e471af7">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +16,7 @@
 <meta property="og:title" content="Your diet: food and nutrient check — KYH">
 <meta property="og:description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diet.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-fb74bc7">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-e471af7">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,10 +33,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261122-fb74bc7"></script>
-<script src="shared/vault.js?v=20261122-fb74bc7"></script>
-<script src="shared/data.diet.js?v=20261122-fb74bc7"></script>
-<script src="shared/diet-targets.js?v=20261122-fb74bc7"></script>
+<script src="shared/utils.js?v=20261122-e471af7"></script>
+<script src="shared/vault.js?v=20261122-e471af7"></script>
+<script src="shared/data.diet.js?v=20261122-e471af7"></script>
+<script src="shared/diet-targets.js?v=20261122-e471af7"></script>
 <script>
 const state   = loadState() || {};
 const profile = state.profile || {};
@@ -129,7 +129,9 @@ function renderPage() {
     ${bodySizeNoticeHtml(profile, 'diet.html')}
     <div class="note-block" style="margin-bottom:28px;">
       <span class="k">Dietary &amp; cuisine preference</span>
-      <div class="field-row" style="margin-top:10px;max-width:520px;">
+      ${curDiet ? `<p id="pref-summary" style="margin:8px 0 0;font-size:14.5px;">${esc(curDiet)} &middot; ${esc(curCuisine)} cuisine
+        <button type="button" id="pref-change" class="refine-back" style="margin-left:10px;">Change</button></p>` : ""}
+      <div class="field-row" id="pref-fields" style="margin-top:10px;max-width:520px;${curDiet ? "display:none;" : ""}">
         <div class="field">
           <label class="intake-label" for="d-type">Dietary preference</label>
           <select id="d-type"><option value=""${curDiet ? "" : " selected"} disabled>&mdash; Select &mdash;</option>${opts(DIET_TYPES, curDiet)}</select>
@@ -148,6 +150,7 @@ function renderPage() {
     <div class="cat-title">Nutrient Priorities</div>
     <p class="lede" style="font-size:14px; margin-bottom:16px;" id="priority-meta">Ranked for you</p>
     <div id="nutrient-list"></div>
+    <div id="nutrient-more"></div>
 
     <div class="page-footer-nav" id="diet-nav">
       <a href="routine.html#plan" class="btn secondary">← Back</a>
@@ -173,6 +176,11 @@ function renderPage() {
     if (hideTargetsHook) hideTargetsHook();
     renderNutrients();
   }
+  const prefChange = document.getElementById("pref-change");
+  if (prefChange) prefChange.addEventListener("click", () => {
+    document.getElementById("pref-fields").style.display = "";
+    document.getElementById("pref-summary").style.display = "none";
+  });
   document.getElementById("d-type").addEventListener("change", onPrefChange);
   document.getElementById("d-cuisine").addEventListener("change", onPrefChange);
 
@@ -325,6 +333,7 @@ function renderFrequencyMatrix() {
   document.getElementById("markers-container").innerHTML = tableHtml + mobileHtml;
 }
 
+let nutShowAll = false;
 function renderNutrients() {
   const list = document.getElementById("nutrient-list");
   if (!list) return;
@@ -336,18 +345,19 @@ function renderNutrients() {
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 
-  const matchedCount = ranked.filter(n => n.matched.length > 0).length;
+  const NUT_FIRST = 5;
+  const shownRanked = nutShowAll ? ranked : ranked.slice(0, NUT_FIRST);
   const meta = document.getElementById("priority-meta");
   if (meta) {
-    meta.textContent = `${ranked.length} nutrients prioritised · ${matchedCount} matched to your symptoms`;
+    meta.textContent = ranked.length > NUT_FIRST && !nutShowAll ? `Your top ${NUT_FIRST}, most important first.` : "Most important first.";
   }
 
-  list.innerHTML = ranked.map((n, idx) => {
+  list.innerHTML = shownRanked.map((n, idx) => {
     const isLimit = n.direction === "limit";
     const examples = getExamples(n.nutrient);
     const tagClass = isLimit ? "due" : (n.matched.length ? "ok" : "");
     const tagText  = isLimit ? "LIMIT"
-      : (n.matched.length ? "MATCHES: " + n.matched.slice(0, 2).join(", ").toUpperCase() : "BASELINE");
+      : (n.matched.length ? "FOR: " + n.matched.slice(0, 2).join(", ").toUpperCase() : "BASELINE");
 
     const current = dietState.intake?.[n.nutrient] || {};
     // migrate old tracking → meeting if needed
@@ -375,7 +385,6 @@ function renderNutrients() {
           <div>
             <div class="name">${idx + 1}. ${n.nutrient}</div>
             <div class="test-desc">${n.note}</div>
-            <div class="symptom"><b>Watch for:</b> ${(n.symptoms || []).slice(0, 5).join(", ")}</div>
             ${examples ? `
               <div style="margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:4px;font-size:12.5px;">
                 <b style="color:var(--teal);">Examples:</b> ${examples}
@@ -416,12 +425,21 @@ function renderNutrients() {
     });
   });
 
+  // the rest of the ranked list, one tap away
+  const moreBox = document.getElementById("nutrient-more");
+  if (moreBox) {
+    moreBox.innerHTML = ranked.length > NUT_FIRST
+      ? `<button type="button" class="refine-back" id="nutrient-more-btn" style="color:var(--teal);font-size:14px;margin:12px 0 0;">${nutShowAll ? "Show fewer &uarr;" : `Show the other ${ranked.length - NUT_FIRST} &darr;`}</button>` : "";
+    const mb = document.getElementById("nutrient-more-btn");
+    if (mb) mb.addEventListener("click", () => { nutShowAll = !nutShowAll; renderNutrients(); });
+  }
+
   // Refresh live counter after nutrient list re-renders
   if (typeof updateCounter === 'function') updateCounter();
 }
 
 renderPage();
 </script>
-<script src="shared/statusbar.js?v=20261122-fb74bc7"></script>
+<script src="shared/statusbar.js?v=20261122-e471af7"></script>
 </body>
 </html>

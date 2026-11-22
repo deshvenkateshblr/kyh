@@ -5,29 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261122-fb74bc7">
+<link rel="stylesheet" href="shared/styles.css?v=20261122-e471af7">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
 .refine-panel .refine-step-h { font-size:15px; margin-bottom:4px; }
-.tp-bar { margin:6px 0 14px; }
-.tp-pills { display:flex; flex-wrap:wrap; gap:4px; }
-.tp-pill { min-width:31px; height:31px; padding:0 4px; border:1px solid var(--line); background:#fff; color:var(--muted); font:12px var(--mono, monospace); border-radius:16px; cursor:pointer; }
-.tp-pill.done { background:var(--teal); border-color:var(--teal); color:#fff; }
-.tp-pill.later { background:var(--amber-soft, #fbeedc); border-color:var(--amber, #c9822b); color:#7a4a12; border-style:dashed; }
-.tp-pill.skip { background:#eceee9; color:#9aa39c; text-decoration:line-through; }
-.tp-chip { background:none; border:1px dashed var(--amber, #c9822b); color:#7a4a12; border-radius:12px; padding:3px 10px; font:12px var(--mono, monospace); cursor:pointer; }
-.result-row select, .result-row input { width:100%; max-width:100%; box-sizing:border-box; }
-.decide-row { display:flex; flex-wrap:wrap; gap:6px; }
-.decide-extra { margin:10px 0 0; }
-.decide-note { font-size:12.5px; color:var(--muted); }
-#review-bucket .rv-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-top:1px solid var(--line); }
-#review-bucket .rv-name { font-size:14.5px; font-weight:600; }
-#review-bucket .rv-btns { display:flex; flex-wrap:wrap; gap:6px; }
-#review-bucket .rv-btns button { background:#fff; border:1px solid var(--line); padding:7px 10px; font:12px var(--mono, monospace); cursor:pointer; }
-.tp-pill.cur { outline:2px solid var(--ink, #1f2a24); outline-offset:1px; }
-.tp-meta { display:flex; justify-content:space-between; gap:12px; margin-top:10px; font:12px var(--mono, monospace); color:var(--muted); }
-.tp-skip { text-align:center; margin:14px 0 4px; font-size:13px; }
 .refine-panel .refine-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:16px; padding-top:14px; }
 .refine-panel .refine-back { background:none; border:0; padding:6px 2px; cursor:pointer; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; }
 .refine-panel .refine-step { border-top:0 !important; margin-top:0 !important; padding-top:0 !important; }
@@ -35,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-fb74bc7">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-e471af7">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -43,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-fb74bc7">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-e471af7">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -61,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261122-fb74bc7"></script>
-<script src="shared/utils.js?v=20261122-fb74bc7"></script>
-<script src="shared/data.symptoms.js?v=20261122-fb74bc7"></script>
-<script src="shared/vault.js?v=20261122-fb74bc7"></script>
+<script src="shared/data.diagnostics.js?v=20261122-e471af7"></script>
+<script src="shared/utils.js?v=20261122-e471af7"></script>
+<script src="shared/data.symptoms.js?v=20261122-e471af7"></script>
+<script src="shared/vault.js?v=20261122-e471af7"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -886,6 +868,6 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/statusbar.js?v=20261122-fb74bc7"></script>
+<script src="shared/statusbar.js?v=20261122-e471af7"></script>
 </body>
 </html>

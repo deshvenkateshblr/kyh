@@ -1566,3 +1566,31 @@ footer {
 .check-field { display: flex; align-items: center; min-height: 32px; }
 .check-field label { display: inline-flex; align-items: center; min-height: 32px; cursor: pointer; }
 #kyh-start-over, .empty-state a { display: inline-block; padding: 10px 4px; margin: -10px -4px; }
+
+/* two-at-a-time pager (tests, exercises, diet) */
+.tp-bar { margin:6px 0 14px; }
+.tp-pills { display:flex; flex-wrap:wrap; gap:4px; }
+.tp-pill { min-width:31px; height:31px; padding:0 4px; border:1px solid var(--line); background:#fff; color:var(--muted); font:12px var(--mono, monospace); border-radius:16px; cursor:pointer; }
+.tp-pill.done { background:var(--teal); border-color:var(--teal); color:#fff; }
+.tp-pill.later { background:var(--amber-soft, #fbeedc); border-color:var(--amber, #c9822b); color:#7a4a12; border-style:dashed; }
+.tp-pill.skip { background:#eceee9; color:#9aa39c; text-decoration:line-through; }
+.tp-chip { background:none; border:1px dashed var(--amber, #c9822b); color:#7a4a12; border-radius:12px; padding:3px 10px; font:12px var(--mono, monospace); cursor:pointer; }
+.result-row select, .result-row input { width:100%; max-width:100%; box-sizing:border-box; }
+.decide-row { display:flex; flex-wrap:wrap; gap:6px; }
+.decide-extra { margin:10px 0 0; }
+.decide-note { font-size:12.5px; color:var(--muted); }
+#review-bucket .rv-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-top:1px solid var(--line); }
+#review-bucket .rv-name { font-size:14.5px; font-weight:600; }
+#review-bucket .rv-btns { display:flex; flex-wrap:wrap; gap:6px; }
+#review-bucket .rv-btns button { background:#fff; border:1px solid var(--line); padding:7px 10px; font:12px var(--mono, monospace); cursor:pointer; }
+.tp-pill.cur { outline:2px solid var(--ink, #1f2a24); outline-offset:1px; }
+.tp-meta { display:flex; justify-content:space-between; gap:12px; margin-top:10px; font:12px var(--mono, monospace); color:var(--muted); }
+.tp-skip { text-align:center; margin:14px 0 4px; font-size:13px; }
+
+/* small chips on exercise cards, and the fold-away sections */
+.meta-row { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; align-items:center; }
+.meta-chip { font:11px var(--mono, monospace); letter-spacing:.03em; color:var(--muted); border:1px solid var(--line); padding:2px 8px; border-radius:10px; background:#fff; }
+details.more-detail > summary, details.rt-fine > summary { list-style:none; }
+details.more-detail > summary::-webkit-details-marker, details.rt-fine > summary::-webkit-details-marker { display:none; }
+details.more-detail > summary::before, details.rt-fine > summary::before { content:'\25B8'; display:inline-block; margin-right:8px; transition:transform .15s; }
+details.more-detail[open] > summary::before, details.rt-fine[open] > summary::before { transform:rotate(90deg); }

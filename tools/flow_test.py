@@ -78,8 +78,8 @@ def answer_all_no(page, scope=''):
     n = page.locator(f'{scope} .test-card').count()
     for i in range(n):
         lab = page.locator(f'{scope} label[for$="-{i}-no"]').first
-        while not lab.is_visible() and page.locator('#tp-next').is_visible():      # tests are shown two at a time
-            page.locator('#tp-next').click()
+        while not lab.is_visible() and (page.locator('#tp-next').is_visible() or page.locator('#mp-next').is_visible()):      # tests and exercises are shown two at a time
+            page.locator('#tp-next' if page.locator('#tp-next').is_visible() else '#mp-next').click()
         lab.click()
     return n
 
@@ -308,14 +308,30 @@ def full_flow(page, base, problems):
     check(page.inner_text('#movement-plan h2').strip() == 'Your matched exercises', 'exercises: heading says "matched"', page.inner_text('#movement-plan h2'))
     n = page.locator('#movement-plan .test-card').count()
     check(n == 10, 'exercises: ten cards', n)
-    page.locator('#mp-continue-btn').click()          # answers are optional: continue with none given
+    check(page.locator('#movement-plan .test-card:visible').count() == 2, 'exercises: two are shown at a time', page.locator('#movement-plan .test-card:visible').count())
+    check(page.locator('#movement-plan .tp-pill').count() == n and 'exercises 1' in page.inner_text('#mp-range').lower(), 'exercises: numbered pills and a range label')
+    check(page.locator('#movement-plan .test-card:visible .symptom').count() == 0 and 'matched your profile' not in page.inner_text('#movement-plan'), 'exercises: no "Helpful for" lines and no match-count line')
+    check(page.locator('#movement-plan .test-card:visible').first.locator('.meta-chip').count() <= 2, 'exercises: only intensity and equipment chips on the card')
+    labs = page.locator('#movement-plan .test-card:visible').first.locator('.decide-row label').all_inner_texts()
+    check(len(labs) == 5 and 'not yet' in labs[-1].lower(), 'exercises: one tap for how often (no separate Yes/No and dropdown)', labs)
+    check(page.locator('#movement-plan select').count() == 0, 'exercises: no frequency dropdown left')
+    check(page.locator('#mp-continue-btn').is_visible() is False and page.locator('#mp-next').is_visible(), 'exercises: Next 2 first, Continue only on the last page')
+    page.locator('#movement-plan label[for="prac-0-f2"]').click()
+    check('done' in page.locator('#movement-plan .tp-pill').first.get_attribute('class'), 'exercises: an answered one marks its pill')
+    page.locator('#mp-next').click()
+    check(page.locator('#movement-plan .test-card:visible').first.get_attribute('data-exercise') == page.locator('#movement-plan .test-card').nth(2).get_attribute('data-exercise'), 'exercises: Next 2 shows the next two')
+    page.locator('#movement-plan .tp-pill').last.click()
+    check(page.locator('#mp-continue-btn').is_visible(), 'exercises: the last page shows Continue')
+    page.locator('#mp-continue-btn').click()          # answers are optional: continue with one given
     page.wait_for_url(re.compile(r'diet\.html'))
+    ex_ans = state_of(page).get('exercises', {}).get('answers', {})
+    check(len(ex_ans) == 1 and list(ex_ans.values())[0] == {'practicing': True, 'frequency': '1\u20132\u00d7 / week'}, 'exercises: a frequency is saved as practising with that frequency', ex_ans)
 
     # --- diet: every answer is optional; targets open in place
     page.wait_for_selector('#nutrient-list .test-card')
     check('Continue anyway' not in page.inner_text('body'), 'diet: no "continue anyway" gate')
     page.locator('#continue-btn').click()
-    page.wait_for_selector('#diet-targets .test-card')
+    page.wait_for_selector('#diet-targets .test-card', state='attached')
     check('diet.html' in page.url and page.locator('#diet-targets').is_visible(), 'diet: targets open on the same page, no new screen')
     diet = state_of(page)['diet']
     check(diet.get('target', {}).get('cal', 0) >= 1200, 'diet: calorie target at or above the intake floor', diet.get('target'))
@@ -602,12 +618,14 @@ def lighter_start(browser, base):
     check('typical body size' in page.inner_text('main').lower(), 'diet: says a typical body size is used when height and weight are missing')
     page.locator('#continue-btn').click()
     page.wait_for_selector('#diet-targets .stat-card')
-    check('typical body size' in page.inner_text('#diet-targets').lower(), 'diet targets: explain that a typical body size was used')
+    check('typical body size' in (page.text_content('#diet-targets') or '').lower(), 'diet targets: explain that a typical body size was used')
 
     # diet page asks for its own preference instead of sending people back
     page.goto(base + 'diet.html')
     page.wait_for_timeout(700)
     check(page.locator('#d-type').count() == 1 and 'Go back to Profile' not in page.inner_text('main'), 'diet: asks for dietary preference in place, no bounce to Profile')
+    if page.locator('#pref-change').count():
+        page.locator('#pref-change').click()
     page.select_option('#d-type', 'Vegan')
     page.wait_for_timeout(300)
     check((state_of(page) or {}).get('profile', {}).get('dietType') == 'Vegan', 'diet: the choice is saved to the profile')
@@ -636,8 +654,24 @@ def merged_steps(browser, base):
     check('dietary preference' in page.inner_text('#answer-counter').lower() and not page.locator('#diet-targets').is_visible(), 'diet: targets wait for a dietary preference')
     page.select_option('#d-type', 'Non-Vegetarian')
     page.locator('#continue-btn').click()
-    page.wait_for_selector('#diet-targets .test-card')
+    page.wait_for_selector('#diet-targets .test-card', state='attached')
     check(page.locator('#diet-targets .test-card').count() > 3, 'diet: targets work with no routine and no answers (assumed burn)')
+    # lighter targets page: headline numbers first, the rest folded
+    hero = page.inner_text('#diet-targets .stat-strip').lower()
+    check('kcal' in hero and 'protein' in hero and 'water' in hero, 'diet targets: calories, protein and water lead the page', hero[:120])
+    folds = page.locator('#diet-targets details.more-detail')
+    check(folds.count() == 2 and all(not folds.nth(i).evaluate('e => e.open') for i in range(2)), 'diet targets: explanations and portion guide are folded by default')
+    # known diet type: the block is a single line; nutrients show five first
+    inject(page, base, {'profile': dict(prof, dietType='Vegetarian', cuisine='Indian'), 'vitals': {}, 'diagnostics': {}}, 'diet.html')
+    page.wait_for_selector('#nutrient-list .test-card')
+    check(page.locator('#pref-summary').is_visible() and not page.locator('#d-type').is_visible(), 'diet: a known diet type shows as one line, not two dropdowns')
+    check('vegetarian' in page.inner_text('#pref-summary').lower(), 'diet: the line names the diet and cuisine', page.inner_text('#pref-summary'))
+    page.locator('#pref-change').click()
+    check(page.locator('#d-type').is_visible(), 'diet: Change opens the dropdowns')
+    check(page.locator('#nutrient-list .test-card').count() == 5 and page.locator('#nutrient-more-btn').is_visible(), 'diet: top five nutrients first, with a link to the rest')
+    check('watch for' not in page.inner_text('#nutrient-list').lower(), 'diet: no "Watch for" symptom line on nutrient cards')
+    page.locator('#nutrient-more-btn').click()
+    check(page.locator('#nutrient-list .test-card').count() == 10, 'diet: the link shows the other five')
     # skip diet -> findings, with nothing from routine or diet
     inject(page, base, {'profile': dict(prof, dietType='Vegetarian'), 'vitals': {}, 'diagnostics': {}}, 'diet.html')
     page.wait_for_selector('#skip-btn')
@@ -648,7 +682,7 @@ def merged_steps(browser, base):
     check(len(body) > 400 and 'undefined' not in body and 'NaN' not in body, 'summary: opens cleanly with routine, exercises and diet all skipped')
     # old diet address forwards
     inject(page, base, {'profile': dict(prof, dietType='Vegetarian'), 'vitals': {}, 'diagnostics': {}}, 'diet-synthesis.html')
-    page.wait_for_selector('#d-type')
+    page.wait_for_selector('#d-type', state='attached')
     check('diet.html' in page.url, 'old Diet synthesis address forwards to the Diet page')
     page.close()
 

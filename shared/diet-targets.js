@@ -187,8 +187,20 @@ function factorLabel(f) {
         <div class="v">~${Number(estBurn).toLocaleString()}</div>
         <div class="u">kcal / day</div>
       </div>
+      <div class="stat-card">
+        <div class="k">Protein</div>
+        <div class="v">${Math.max(1, proteinPortions - 1)}\u2013${proteinPortions + 1}</div>
+        <div class="u">palm-size portions / day</div>
+      </div>
+      <div class="stat-card">
+        <div class="k">Water</div>
+        <div class="v">~${waterL}</div>
+        <div class="u">litres / day</div>
+      </div>
     </div>
 
+    <details class="more-detail" style="margin:0 0 18px;">
+      <summary class="cat-title" style="cursor:pointer;margin:0 0 10px;">How these were worked out</summary>
     <div class="note-block" style="margin-bottom:24px; font-size:13px;">
         <span class="k">How intake is calculated</span>
         <p style="margin:8px 0 0 0; line-height:1.6;">
@@ -220,7 +232,10 @@ function factorLabel(f) {
       ${priorityText}
     </div>
     ${buildMeetingNotes()}
+    </details>
 
+    <details class="more-detail" style="margin:0 0 18px;">
+      <summary class="cat-title" style="cursor:pointer;margin:0 0 10px;">Portion guide and food ideas</summary>
     <!-- 4. Daily Macro Targets (portions only) -->
 <div class="cat-title">Daily Macro Targets</div>
 <p class="lede" style="font-size:14px; margin-bottom:20px;">
@@ -283,6 +298,8 @@ function factorLabel(f) {
     <b style="color:var(--teal);">Ideas for you:</b> Spread across the day rather than all at once; add more in heat or after exercise. Water, buttermilk, coconut water, and herbal tea all count. Guide only — not a medical prescription.
   </div>
 </div>
+
+    </details>
 
 <div class="page-footer-nav" style="margin-top:32px;">
   <button type="button" class="btn" id="dt-finish">See my findings →</button>
