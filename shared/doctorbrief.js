@@ -21,7 +21,7 @@
   /* Set this to the public address you want printed in the footer.
      If left empty, the current site address is used when the app is
      served over http(s). */
-  const KYH_SITE_URL = 'https://vividnova.com/3DHealth/';
+  const KYH_SITE_URL = 'https://vividnova.com/kyh/';
 
   const RESULT_WITHIN  = 'Within range';
   const RESULT_FLAGGED = 'Flagged \u2014 needs attention';

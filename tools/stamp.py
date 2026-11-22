@@ -13,7 +13,7 @@ link in kyf_teaser.html, then re-run this script.
 """
 import re, sys, glob, json, subprocess, datetime, html
 
-BASE = 'https://vividnova.com/3DHealth/'
+BASE = 'https://vividnova.com/kyh/'
 OG_IMAGE = 'shared/assets/og-image.png'
 DEFAULT_DESC = ("KYH (Know Your Health) helps you understand your health across Diagnostics, "
                 "Daily Routine and Diet, then walk into your doctor's visit prepared.")

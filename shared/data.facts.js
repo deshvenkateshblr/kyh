@@ -4,7 +4,7 @@
    status 'ready' = quote checked against the live page on `checked`; 'verify' = needs a look before use.
    `area`: tests | routine | diet | avoid.  `when`: optional audience filter (sex, minAge, smoker).
    Approved sources: ACS, AHA, ADA, NIH ODS, NIH NCCIH, Arthritis Foundation, ICMR-NIN. */
-window.FACTS_SHARE_BASE = 'https://vividnova.com/3DHealth/';   // TODO owner: confirm public address (vividnova.com/kyh?)
+window.FACTS_SHARE_BASE = 'https://vividnova.com/kyh/';
 
 (function () {
   var ACS_SCREEN = { org: 'American Cancer Society', title: 'Screening Guidelines by Age', url: 'https://www.cancer.org/cancer/screening/screening-recommendations-by-age.html', pageDate: 'Last revised Nov 12, 2026' };
@@ -98,10 +98,11 @@ window.FACTS_SHARE_BASE = 'https://vividnova.com/3DHealth/';   // TODO owner: co
 
     /* ---- avoid ---- */
     { id: 'acs-alcohol', area: 'avoid', kind: 'fact', headline: 'Alcohol and cancer',
-      claim: 'The American Cancer Society says drinking alcohol increases the risk of cancer, and that it is best not to drink alcohol. If you do, keep to no more than 1 drink a day for women or 2 for men.',
-      quote: 'it is best not to drink alcohol.',
+      claim: 'The American Cancer Society says drinking even small amounts of alcohol increases the risk of some cancers, such as breast cancer, and that it is best not to drink alcohol. If you do, keep to no more than 1 drink a day for women or 2 for men.',
+      quote: 'drinking even small amounts of alcohol increases your risk',
+      quote2: 'it is best not to drink alcohol.',
       source: { org: 'American Cancer Society', title: 'Alcohol Use and Cancer', url: 'https://www.cancer.org/cancer/risk-prevention/diet-physical-activity/alcohol-use-and-cancer.html', pageDate: 'No revision date found in the part read' },
-      caveat: 'The page links alcohol to mouth, throat, voice box, esophagus, liver, colon and rectum, breast and stomach cancers. It does not use the words "known carcinogen" or "no safe level".',
+      caveat: 'The page links alcohol to mouth, throat, voice box, esophagus, liver, colon and rectum, breast and stomach cancers. It does not use the words "known carcinogen" or "no safe level", so the card must not either. WebMD is not an approved source; add one (e.g. the US Surgeon General advisory) if "no safe level" wording is wanted.',
       hook: hook('See how your habits shape your checks.', 'Get my starter list'), status: 'ready', checked: T },
     { id: 'acs-tobacco', area: 'avoid', kind: 'fact', headline: 'Smoking and cancer',
       claim: 'The American Cancer Society says smoking causes about 20% of all cancers and about 30% of all cancer deaths in the United States, and that quitting, especially at a younger age, can reduce tobacco-related disability.',

@@ -5,7 +5,7 @@ It turns your symptoms, daily routine and diet into ranked tests, exercises and
 questions to take to your doctor. It runs entirely in the browser: nothing is
 sent to a server. It is not medical advice.
 
-Live: https://vividnova.com/3DHealth/
+Live: https://vividnova.com/kyh/
 
 ## Run locally
     python3 -m http.server 8000     # then open http://localhost:8000
