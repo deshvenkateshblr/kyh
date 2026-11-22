@@ -999,20 +999,20 @@ const KYH_BRAND_BLURB =
 
     // 3) Harmful food quality only (problems)
     const freq = diet.frequency || {};
-    if (freq.sugary_drinks === 'Daily' || freq.sugary_drinks === '3-5x/Wk') {
+    if (['Daily', '3-5x/Wk', 'Most days'].includes(freq.sugary_drinks)) {
       out.push(insight({
         id: 'fq-sugary', domain: 'diet', tone: 'act', priority: 11,
         title: 'Sugary drinks are frequent',
-        detail: `Marked “${freq.sugary_drinks}”. Fast lever for waist, triglycerides, and energy crashes.`,
+        detail: `You have these ${freq.sugary_drinks === 'Most days' ? 'most days' : 'often'}. Fast lever for waist, triglycerides, and energy crashes.`,
         next: 'Replace the most frequent sugary drink with water, soda water, or unsweetened tea.',
         sources: ['diet.frequency.sugary_drinks']
       }));
     }
-    if (freq.fried_ultraprocessed === 'Daily' || freq.fried_ultraprocessed === '3-5x/Wk') {
+    if (['Daily', '3-5x/Wk', 'Most days'].includes(freq.fried_ultraprocessed)) {
       out.push(insight({
         id: 'fq-upf', domain: 'diet', tone: 'act', priority: 11,
         title: 'Fried / ultra-processed foods are frequent',
-        detail: `Marked “${freq.fried_ultraprocessed}”.`,
+        detail: `You have these ${freq.fried_ultraprocessed === 'Most days' ? 'most days' : 'often'}.`,
         next: 'Swap one default fried or packaged item per day for a home-cooked option.',
         sources: ['diet.frequency.fried_ultraprocessed']
       }));
@@ -1023,11 +1023,11 @@ const KYH_BRAND_BLURB =
         legumes: 'Legumes', nuts_seeds: 'Nuts & seeds'
       };
       const f = freq[id];
-      if (f === 'Rarely' || f === '1-2x/Wk') {
+      if (f === 'Rarely' || f === '1-2x/Wk' || f === 'Sometimes') {
         out.push(insight({
           id: 'fq-low-' + id, domain: 'diet', tone: f === 'Rarely' ? 'act' : 'watch', priority: 18,
           title: `${labels[id]} intake is infrequent`,
-          detail: `Marked “${f}”.`,
+          detail: f === 'Sometimes' ? 'Not something you have most days.' : `Marked “${f}”.`,
           next: `Raise ${labels[id].toLowerCase()} toward several times per week with foods you already like.`,
           sources: ['diet.frequency.' + id]
         }));

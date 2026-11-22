@@ -143,7 +143,7 @@ function factorLabel(f) {
     }
 
     if ((symptoms.includes("Fatigue") || symptoms.includes("Low Energy")) &&
-        (freq.leafy_greens === "Rarely" || freq.leafy_greens === "1-2x/Wk")) {
+        (freq.leafy_greens === "Rarely" || freq.leafy_greens === "1-2x/Wk" || freq.leafy_greens === "Sometimes")) {
       insights.push("Your fatigue is likely connected to low leafy green intake (iron + magnesium). Adding a serving most days is high-leverage.");
     }
 

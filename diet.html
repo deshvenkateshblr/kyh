@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
   <title>Your diet: food and nutrient check — KYH</title>
-  <link rel="stylesheet" href="shared/styles.css?v=20261122-e471af7">
+  <link rel="stylesheet" href="shared/styles.css?v=20261122-74a9e8c">
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-e471af7">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261122-74a9e8c">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -16,7 +16,7 @@
 <meta property="og:title" content="Your diet: food and nutrient check — KYH">
 <meta property="og:description" content="Say how often you eat key food groups, then see your calorie, protein, fibre and water targets and the diet gaps worth raising with your doctor.">
 <meta property="og:url" content="https://vividnova.com/3DHealth/diet.html">
-<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-e471af7">
+<meta property="og:image" content="https://vividnova.com/3DHealth/shared/assets/og-image.png?v=20261122-74a9e8c">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -33,10 +33,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/utils.js?v=20261122-e471af7"></script>
-<script src="shared/vault.js?v=20261122-e471af7"></script>
-<script src="shared/data.diet.js?v=20261122-e471af7"></script>
-<script src="shared/diet-targets.js?v=20261122-e471af7"></script>
+<script src="shared/utils.js?v=20261122-74a9e8c"></script>
+<script src="shared/vault.js?v=20261122-74a9e8c"></script>
+<script src="shared/data.diet.js?v=20261122-74a9e8c"></script>
+<script src="shared/diet-targets.js?v=20261122-74a9e8c"></script>
 <script>
 const state   = loadState() || {};
 const profile = state.profile || {};
@@ -89,10 +89,10 @@ function scoreNutrient(n) {
   Object.entries(dietState.frequency || {}).forEach(([id, freq]) => {
     const marker = (window.FOOD_QUALITY || []).find(f => f.id === id);
     if (!marker) return;
-    if (marker.type === "protective" && (freq === "Rarely" || freq === "1-2x/Wk")) {
+    if (marker.type === "protective" && (freq === "Rarely" || freq === "1-2x/Wk" || freq === "Sometimes")) {
       if (marker.nutrientsBoosted.includes(n.nutrient)) score += 5;
     }
-    if (marker.type === "harmful" && (freq === "Daily" || freq === "3-5x/Wk")) {
+    if (marker.type === "harmful" && (freq === "Daily" || freq === "3-5x/Wk" || freq === "Most days")) {
       if (n.nutrient === "Added Sugars / Refined Carbohydrates") score += 11;
     }
   });
@@ -143,8 +143,7 @@ function renderPage() {
       </div>
     </div>
 
-    <div class="cat-title">Food Quality Markers</div>
-    <p class="lede" style="font-size:14px; margin-bottom:16px;">How often do you consume these?</p>
+    <div class="cat-title">Your usual foods</div>
     <div id="markers-container" style="margin-bottom:36px;"></div>
 
     <div class="cat-title">Nutrient Priorities</div>
@@ -185,16 +184,7 @@ function renderPage() {
   document.getElementById("d-cuisine").addEventListener("change", onPrefChange);
 
   // Frequency matrix change
- document.getElementById("markers-container").addEventListener("change", e => {
-    const foodId = e.target.dataset.food;
-    if (!foodId) return;
-
-    if (e.target.type === "radio" || e.target.tagName === "SELECT") {
-    dietState.frequency[foodId] = e.target.value;
-    saveDietProgress();
-    renderNutrients();
-    }
- });
+ document.getElementById("markers-container").addEventListener("click", onFoodChip);
 
   // Every answer here is optional: a live counter, no gate.
   // Targets are worked out on click and shown below; if an answer changes afterwards they are cleared
@@ -275,62 +265,48 @@ function renderPage() {
   });
 }
 
+/* Food pattern: two questions, one tap per food that applies.
+   "Most days" = you have it most days. Once someone taps anything in a group, the foods they did not tap
+   count as "Sometimes" (not most days); "None of these" records "Rarely" for the whole group.
+   Skipping the section records nothing. Older saved answers (Daily, 3-5x/Wk, 1-2x/Wk, Rarely) still read correctly. */
+const FQ_MOST = v => v === "Most days" || v === "Daily" || v === "3-5x/Wk";
 function renderFrequencyMatrix() {
   const foods = window.FOOD_QUALITY || [];
-  const freqs = window.FOOD_QUALITY_OPTIONS || ["Daily", "3-5x/Wk", "1-2x/Wk", "Rarely"];
+  const groups = [
+    { type: "protective", title: "Foods that help", q: "Which of these do you have most days?" },
+    { type: "harmful",    title: "Foods to go easy on", q: "And which of these do you have most days?" }
+  ];
+  document.getElementById("markers-container").innerHTML = groups.map(g => {
+    const list = foods.filter(f => f.type === g.type);
+    const none = list.length && list.every(f => dietState.frequency[f.id] === "Rarely");
+    return `<div class="fq-group" data-group="${g.type}">
+      <div class="fq-title">${g.title}</div>
+      <p class="fq-q">${g.q}</p>
+      <div class="browse-grid">
+        ${list.map(f => `<button type="button" class="browse-chip${FQ_MOST(dietState.frequency[f.id]) ? " selected" : ""}" data-food="${f.id}" aria-pressed="${FQ_MOST(dietState.frequency[f.id])}">${esc(f.label)}</button>`).join("")}
+        <button type="button" class="browse-chip${none ? " selected" : ""}" data-none="${g.type}" aria-pressed="${none}">None of these</button>
+      </div></div>`;
+  }).join("") + `<p class="rt-hint" style="margin-top:4px;">Tap what applies, or skip if you are not sure.</p>`;
+}
 
-  // ----- Desktop: radio matrix (unchanged) -----
-  let tableHtml = `
-    <div class="fq-matrix-wrapper fq-desktop-only">
-      <table class="fq-matrix">
-        <thead>
-          <tr>
-            <th>Frequency</th>
-            ${foods.map(f => `<th>${f.label}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-  `;
-  freqs.forEach(freq => {
-    tableHtml += `<tr><th scope="row">${freq}</th>`;
-    foods.forEach(food => {
-      const checked = dietState.frequency[food.id] === freq ? "checked" : "";
-      tableHtml += `
-        <td>
-          <input type="radio"
-                 name="fq_${food.id}"
-                 value="${freq}"
-                 data-food="${food.id}"
-                 ${checked}
-                 aria-label="${freq} for ${food.label}">
-        </td>`;
-    });
-    tableHtml += `</tr>`;
-  });
-  tableHtml += `</tbody></table></div>`;
-
-  // ----- Mobile: one row per food + frequency dropdown -----
-  let mobileHtml = `<div class="fq-mobile-list fq-mobile-only">`;
-  foods.forEach(food => {
-    const current = dietState.frequency[food.id] || "";
-    const options = freqs.map(f =>
-      `<option value="${f}" ${current === f ? "selected" : ""}>${f}</option>`
-    ).join("");
-
-    mobileHtml += `
-      <div class="fq-mobile-row">
-        <label class="fq-mobile-label" for="fq-sel-${food.id}">${food.label}</label>
-        <select id="fq-sel-${food.id}"
-                class="fq-mobile-select"
-                data-food="${food.id}">
-          <option value="">How often?</option>
-          ${options}
-        </select>
-      </div>`;
-  });
-  mobileHtml += `</div>`;
-
-  document.getElementById("markers-container").innerHTML = tableHtml + mobileHtml;
+function onFoodChip(e) {
+  const chip = e.target.closest(".browse-chip");
+  if (!chip) return;
+  const foods = window.FOOD_QUALITY || [];
+  const type = chip.dataset.none || (foods.find(f => f.id === chip.dataset.food) || {}).type;
+  const list = foods.filter(f => f.type === type);
+  const freq = dietState.frequency || (dietState.frequency = {});
+  if (chip.dataset.none) {
+    const allNone = list.every(f => freq[f.id] === "Rarely");
+    list.forEach(f => { if (allNone) delete freq[f.id]; else freq[f.id] = "Rarely"; });
+  } else {
+    const id = chip.dataset.food;
+    freq[id] = FQ_MOST(freq[id]) ? "Sometimes" : "Most days";
+    list.forEach(f => { if (!freq[f.id] || freq[f.id] === "Rarely") freq[f.id] = "Sometimes"; });
+  }
+  saveDietProgress();
+  renderFrequencyMatrix();
+  renderNutrients();
 }
 
 let nutShowAll = false;
@@ -440,6 +416,6 @@ function renderNutrients() {
 
 renderPage();
 </script>
-<script src="shared/statusbar.js?v=20261122-e471af7"></script>
+<script src="shared/statusbar.js?v=20261122-74a9e8c"></script>
 </body>
 </html>

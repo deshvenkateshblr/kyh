@@ -204,8 +204,8 @@
   }
 
   const MEET_LABEL = { yes: 'Meeting', partial: 'Partly', no: 'Not meeting' };
-  const FREQ_ORDER = ['Daily', '3-5x/Wk', '1-2x/Wk', 'Rarely'];
-  const FREQ_LABEL = { 'Daily': 'Daily', '3-5x/Wk': '3\u20135x/week', '1-2x/Wk': '1\u20132x/week', 'Rarely': 'Rarely' };
+  const FREQ_ORDER = ['Daily', 'Most days', '3-5x/Wk', '1-2x/Wk', 'Sometimes', 'Rarely'];
+  const FREQ_LABEL = { 'Daily': 'Daily', '3-5x/Wk': '3\u20135x/week', '1-2x/Wk': '1\u20132x/week', 'Rarely': 'Rarely', 'Most days': 'Most days', 'Sometimes': 'Not most days' };
 
   function dietBlock(state) {
     const diet = state.diet || {};

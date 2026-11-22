@@ -335,8 +335,23 @@ def full_flow(page, base, problems):
     check('diet.html' in page.url and page.locator('#diet-targets').is_visible(), 'diet: targets open on the same page, no new screen')
     diet = state_of(page)['diet']
     check(diet.get('target', {}).get('cal', 0) >= 1200, 'diet: calorie target at or above the intake floor', diet.get('target'))
+    # food pattern: two questions, one tap per food that applies
+    check(page.locator('#markers-container .fq-group').count() == 2 and page.locator('#markers-container select').count() == 0 and page.locator('#markers-container table').count() == 0, 'food: two group questions, no dropdowns and no matrix')
+    check(page.locator('#markers-container .browse-chip[data-food]').count() == 6 and page.locator('#markers-container [data-none]').count() == 2, 'food: six foods plus a None of these in each group')
+    chips_h = page.locator('#markers-container .browse-chip[data-food]').first.bounding_box()['height']
+    check(chips_h >= 32, 'food: tap targets are large enough', chips_h)
+    page.locator('#markers-container .browse-chip[data-food="leafy_greens"]').click()
+    fq = state_of(page)['diet']['frequency']
+    check(fq.get('leafy_greens') == 'Most days' and fq.get('fruits') == 'Sometimes' and 'sugary_drinks' not in fq, 'food: one tap records most days; the rest of that group counts as not most days; the other group is untouched', fq)
+    page.locator('#markers-container [data-none="harmful"]').click()
+    fq = state_of(page)['diet']['frequency']
+    check(fq.get('sugary_drinks') == 'Rarely' and fq.get('fried_ultraprocessed') == 'Rarely', 'food: None of these records rarely for the group', fq)
+    page.locator('#markers-container [data-none="harmful"]').click()
+    check('sugary_drinks' not in state_of(page)['diet']['frequency'], 'food: tapping None again clears the group')
+    page.locator('#markers-container .browse-chip[data-food="sugary_drinks"]').click()
+    check(state_of(page)['diet']['frequency'].get('sugary_drinks') == 'Most days', 'food: a harmful food ticked is saved as most days')
     # changing an answer clears the targets so the screen never disagrees with what is saved
-    page.locator('.fq-desktop-only input[type=radio][data-food]').first.check()
+    page.locator('#markers-container .browse-chip[data-food]').first.click()
     page.wait_for_timeout(200)
     check(not page.locator('#diet-targets').is_visible(), 'diet: changing an answer clears the targets')
     page.locator('#continue-btn').click()

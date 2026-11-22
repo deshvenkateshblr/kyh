@@ -1594,3 +1594,6 @@ details.more-detail > summary, details.rt-fine > summary { list-style:none; }
 details.more-detail > summary::-webkit-details-marker, details.rt-fine > summary::-webkit-details-marker { display:none; }
 details.more-detail > summary::before, details.rt-fine > summary::before { content:'\25B8'; display:inline-block; margin-right:8px; transition:transform .15s; }
 details.more-detail[open] > summary::before, details.rt-fine[open] > summary::before { transform:rotate(90deg); }
+.fq-group { margin:0 0 22px; }
+.fq-title { font:600 12px var(--mono, monospace); letter-spacing:.06em; text-transform:uppercase; color:var(--teal); margin:0 0 2px; }
+.fq-q { font-size:15px; margin:0 0 10px; }
