@@ -76,3 +76,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.4 - routine message clears
 - The "please choose..." message on the Routine page clears as soon as the person answers.
+
+## v2.5 - traditional exercise names
+- The Sanskrit/Indian name (data aka) now shows under each exercise title instead of only inside the demo view.

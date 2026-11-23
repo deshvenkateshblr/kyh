@@ -223,11 +223,9 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
 
     const extendedText = ex.extended_info || ex.note;
     
-        // Build the 'Also known as' line if an alternate name exists
+    // Traditional (Sanskrit/Indian) name, shown under the title so it is visible without opening the demo
     const akaLine = (ex.aka && ex.aka.trim())
-      ? `<div style="font-size: 12.5px; color: var(--muted); margin-bottom: 6px;">
-           <span style="font-style: italic;">Also known as:</span> <strong style="color: var(--ink); font-weight: 600;">${esc(ex.aka)}</strong>
-         </div>`
+      ? `<div class="ex-aka">${esc(ex.aka)}</div>`
       : '';
     
     
@@ -241,6 +239,7 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
             <div class="name">${i + 1}. ${esc(ex.exercise)}</div>
             ${videoBtn}
           </div>
+          ${akaLine}
 
           <!-- Standard Info Block (Hidden during Demo mode) -->
           <div id="standard-info-${i}">
@@ -255,7 +254,6 @@ const intensityChip = `<span class="meta-chip">${esc(ex.intensity || '—')} int
 
           <!-- Extended Info Block (Visible only during Demo mode) -->
           <div id="extended-info-${i}" style="display: none; margin-top: 10px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft);">
-            ${akaLine}
             <div>${esc(extendedText)}</div>
           </div>
           

@@ -1607,3 +1607,5 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .fact-actions { display: flex; gap: 8px; }
 .btn-fact { font: inherit; font-size: .9rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--teal); background: var(--teal); color: #fff; cursor: pointer; min-height: 40px; }
 .btn-fact.ghost { background: transparent; color: var(--teal); }
+
+.ex-aka { font-size: 12.5px; font-style: italic; color: var(--muted); margin: 2px 0 4px; }

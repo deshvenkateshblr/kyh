@@ -450,6 +450,18 @@ def fact_cards(browser, base):
     page.close()
 
 
+def exercise_aka(browser, base):
+    print('\nExercises: traditional names')
+    page = browser.new_page(viewport={'width': 390, 'height': 900})
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': []}
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'mode': 'simple', 'dayType': 'sit', 'exerciseDays': 'none', 'estimatedCalories': 2200, 'activities': [], 'activitiesConfirmed': True}}, 'routine.html')
+    page.wait_for_selector('.dt-card'); page.locator('#continue-btn').click()
+    page.wait_for_selector('#movement-plan .test-card')
+    n = page.evaluate("() => { const out = []; document.querySelectorAll('#movement-plan .test-card').forEach(c => { const name = c.dataset.exercise; const ex = EXERCISES.find(e => e.exercise === name); if (ex && ex.aka && ex.aka.trim()) out.push([name, !!c.querySelector('.ex-aka')]); }); return out; }")
+    check(all(v for _, v in n), 'exercises with a traditional name show it under the title', n[:4])
+    page.close()
+
+
 def quick_day(browser, base):
     print('\nRoutine: quick day type')
     page = browser.new_page(viewport={'width': 390, 'height': 900})
@@ -817,6 +829,10 @@ def main():
             lighter_start(browser, base)
         except Exception as e:
             check(False, 'shorter start checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            exercise_aka(browser, base)
+        except Exception as e:
+            check(False, 'exercise name checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             quick_day(browser, base)
         except Exception as e:
