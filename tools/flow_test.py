@@ -423,6 +423,25 @@ def regressions(page, base):
     check('Your pregnancy deserves specialized care' in page.inner_text('body'), 'pregnancy: profile pauses with a care message')
 
 
+def fact_cards(browser, base):
+    print('\nDid-you-know cards')
+    page = browser.new_page(viewport={'width': 390, 'height': 900})
+    prof = {'age': 52, 'sex': 'Female', 'heightCm': 160, 'weightKg': 62, 'bmi': 24, 'whtr': None, 'waistCm': None, 'symptoms': [], 'smoking': 'Never', 'dietType': 'Vegetarian'}
+    for pg, area in (('diagnostics.html', 'tests'), ('routine.html', 'routine'), ('diet.html', 'diet'), ('summary.html', None)):
+        inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, pg)
+        page.wait_for_selector('#fact-card', state='attached', timeout=15000)
+        fid = page.evaluate("() => document.querySelector('#fact-card .fact-src a').href")
+        check(page.locator('#fact-card .fact-head').inner_text().strip() != '' and fid.startswith('http'), f'fact card on {pg} has headline and source link', fid)
+        if area:
+            ok = page.evaluate("(a) => { const t = document.querySelector('#fact-card .fact-head').textContent; return FACTS.some(f => f.area === a && f.status === 'ready' && f.headline === t); }", area)
+            check(ok, f'fact card on {pg} comes from the {area} facts')
+    txt = page.evaluate("() => { const f = FACTS.find(x => x.status === 'ready'); return KYH_FACT_SHARE_TEXT(f); }")
+    check('vividnova.com/kyh/?ref=fact-' in txt and 'Source:' in txt, 'share text carries the source and a link back to the app', txt[-120:])
+    check('52' not in txt.split('Source:')[0] and 'Vegetarian' not in txt and 'Female' not in txt, 'share text carries no personal answers')
+    check(page.evaluate("() => FACTS.every(f => f.status !== 'ready' || (f.quote && f.source && f.source.url && f.source.org && f.hook && f.hook.text))"), 'every ready fact has quote, source and hook')
+    page.close()
+
+
 def quick_day(browser, base):
     print('\nRoutine: quick day type')
     page = browser.new_page(viewport={'width': 390, 'height': 900})
@@ -786,6 +805,10 @@ def main():
             quick_day(browser, base)
         except Exception as e:
             check(False, 'quick day checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            fact_cards(browser, base)
+        except Exception as e:
+            check(False, 'fact card checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             hidden_unit_does_not_block(browser, base)
         except Exception as e:

@@ -65,3 +65,8 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 **Exercises and Diet decluttered (v2.0):** exercises show two at a time with the shared pager (pills, Next/Previous, skip link; CSS now in shared/styles.css), one tap for how often (a frequency means practising, `Not yet` means no; saved shape unchanged) and only intensity and equipment chips. Diet shows a known diet type as one line (Change reveals the dropdowns), the top 5 nutrients first (`Show the other 5`), no symptom lines on nutrient cards, and the targets page leads with calories, burn, protein and water with two folded sections (`How these were worked out`, `Portion guide and food ideas`).
 
 **Food pattern (v2.1):** the six-food frequency matrix and per-food dropdowns are replaced by two tap questions ("Which of these do you have most days?" for Foods that help, and for Foods to go easy on), one tap per food that applies plus `None of these`. Stored values: `Most days` (ticked), `Sometimes` (not ticked once the group is touched), `Rarely` (None). Older values (Daily, 3-5x/Wk, 1-2x/Wk, Rarely) still score and display correctly in scoring, targets, insights and the Doctor Brief.
+
+## v2.2 - Did you know cards
+- shared/data.facts.js: 16 quote-checked facts (ACS, AHA, ADA, NIH ODS, Arthritis Foundation) plus 2 held back as verify.
+- shared/facts.js: one card per page (tests, routine, diet, summary) with Share/Copy; share text = fact + source + link vividnova.com/kyh/?ref=fact-<id>; never personal answers.
+- tools/check_facts.py + .github/workflows/check-facts.yml: weekly check that each quote is still on its source page (--fix demotes failures to verify).

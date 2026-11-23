@@ -1597,3 +1597,13 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .fq-group { margin:0 0 22px; }
 .fq-title { font:600 12px var(--mono, monospace); letter-spacing:.06em; text-transform:uppercase; color:var(--teal); margin:0 0 2px; }
 .fq-q { font-size:15px; margin:0 0 10px; }
+
+/* "Did you know?" fact card (shared/facts.js) */
+.fact-card { max-width: 760px; margin: 18px auto 8px; padding: 14px 16px; background: var(--teal-soft); border: 1px solid var(--line); border-left: 4px solid var(--teal); border-radius: 10px; }
+.fact-kicker { font: 11px var(--mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--teal); }
+.fact-head { margin: 4px 0 6px; font-size: 1.05rem; color: var(--ink); }
+.fact-body { margin: 0 0 6px; color: var(--ink-soft); }
+.fact-src { margin: 0 0 10px; font-size: .8rem; color: var(--muted); }
+.fact-actions { display: flex; gap: 8px; }
+.btn-fact { font: inherit; font-size: .9rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--teal); background: var(--teal); color: #fff; cursor: pointer; min-height: 40px; }
+.btn-fact.ghost { background: transparent; color: var(--teal); }
