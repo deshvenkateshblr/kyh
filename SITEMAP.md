@@ -70,3 +70,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 - shared/data.facts.js: 16 quote-checked facts (ACS, AHA, ADA, NIH ODS, Arthritis Foundation) plus 2 held back as verify.
 - shared/facts.js: one card per page (tests, routine, diet, summary) with Share/Copy; share text = fact + source + link vividnova.com/kyh/?ref=fact-<id>; never personal answers.
 - tools/check_facts.py + .github/workflows/check-facts.yml: weekly check that each quote is still on its source page (--fix demotes failures to verify).
+
+## v2.3 - waist accepts inches
+- Refine panel waist box takes "88", "88 cm", "34 in" (a bare number under 50 is read as inches) and shows the conversion; no trip to the full form.

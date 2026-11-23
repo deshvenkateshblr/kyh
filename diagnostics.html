@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261123-e327f8d">
+<link rel="stylesheet" href="shared/styles.css?v=20261123-61e850f">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -17,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261123-e327f8d">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261123-61e850f">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/kyh/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261123-e327f8d">
+<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261123-61e850f">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261123-e327f8d"></script>
-<script src="shared/utils.js?v=20261123-e327f8d"></script>
-<script src="shared/data.symptoms.js?v=20261123-e327f8d"></script>
-<script src="shared/vault.js?v=20261123-e327f8d"></script>
+<script src="shared/data.diagnostics.js?v=20261123-61e850f"></script>
+<script src="shared/utils.js?v=20261123-61e850f"></script>
+<script src="shared/data.symptoms.js?v=20261123-61e850f"></script>
+<script src="shared/vault.js?v=20261123-61e850f"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -669,10 +669,10 @@ function renderRefinePanel() {
           <div class="field"><label class="intake-label" for="rf-weight">Weight (kg)</label>
             <input type="number" id="rf-weight" inputmode="decimal" min="30" max="250" step="0.1" placeholder="e.g. 70" value="${profile.weightKg || ''}"></div>
         </div>
-        <div class="field" style="max-width:200px;margin-top:12px;"><label class="intake-label" for="rf-waist">Waist (cm), optional</label>
-          <input type="number" id="rf-waist" inputmode="decimal" min="50" max="200" step="0.5" placeholder="e.g. 88" value="${profile.waistCm || ''}"></div>
+        <div class="field" style="max-width:200px;margin-top:12px;"><label class="intake-label" for="rf-waist">Waist, optional</label>
+          <input type="text" id="rf-waist" inputmode="decimal" autocomplete="off" placeholder="88 cm or 34 in" value="${profile.waistCm ? (Math.round(profile.waistCm * 10) / 10) + ' cm' : ''}"></div>
         <p class="refine-why" id="rf-bmi" style="margin-top:8px;"></p>
-        <p class="refine-why" style="margin-top:2px;">Use feet, inches or pounds, or add waist: <a href="profile.html#refine&amp;next=diagnostics.html">open the full form &rarr;</a></p>
+        <p class="refine-why" style="margin-top:2px;">Waist: type cm or inches (a number under 50 is read as inches). For feet, inches or pounds: <a href="profile.html#refine&amp;next=diagnostics.html">open the full form &rarr;</a></p>
       </div>
       <div class="refine-step" data-step="1" hidden>
         <div class="refine-step-h"><b>2 &middot; Symptoms</b></div>
@@ -799,7 +799,15 @@ function readBody() {
   const w = parseFloat(document.getElementById('rf-weight').value);
   return { h, w, hasH: !isNaN(h), hasW: !isNaN(w) };
 }
-function readWaist() { const v = parseFloat(document.getElementById('rf-waist').value); return isNaN(v) ? null : v; }
+// Waist accepts "88", "88 cm", "34 in", 34" ... A bare number under 50 can only be inches.
+function parseWaist(raw) {
+  const m = String(raw || '').trim().toLowerCase().match(/^(\d+(?:[.,]\d+)?)\s*(cm|in|inch|inches|")?$/);
+  if (!m) return String(raw || '').trim() ? { bad: true } : null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  const inches = m[2] ? m[2] !== 'cm' : n < 50;
+  return { cm: Math.round((inches ? n * 2.54 : n) * 10) / 10, inches, n };
+}
+function readWaist() { const r = parseWaist(document.getElementById('rf-waist').value); return r && !r.bad ? r.cm : null; }
 function showBmi() {
   const { h, w, hasH, hasW } = readBody();
   const el = document.getElementById('rf-bmi');
@@ -812,9 +820,12 @@ function showBmi() {
   } else if (hasH || hasW) {
     lines.push((hasH && hasW) ? 'Height should be 120 to 230 cm and weight 30 to 250 kg.' : 'Add both height and weight to see your BMI.');
   }
+  const wr = parseWaist(document.getElementById('rf-waist').value);
   const wc = readWaist();
+  if (wr && wr.bad) lines.push('Waist: type a number, like 88 or 34 in.');
   if (wc != null) {
-    if (wc < 50 || wc > 200) lines.push('Waist should be 50 to 200 cm.');
+    if (wr.inches) lines.push(`Waist ${esc(String(wr.n))} in = ${wc} cm`);
+    if (wc < 50 || wc > 200) lines.push('Waist should be 50 to 200 cm (20 to 80 in).');
     else if (bodyOk) { const r = wc / h; lines.push(`<b>Waist-to-height ${r.toFixed(2)}</b> &middot; ${esc(whtrTag(r)[0])}`); }
     else lines.push('Add height and weight too, to compare your waist with your height.');
   }
@@ -838,7 +849,7 @@ function applyBody() {
     said.push('Height and weight cleared');
   }
   if (wc != null && wc >= 50 && wc <= 200 && profile.waistCm !== wc) { profile.waistCm = wc; said.push('Waist added'); }
-  else if (wc == null && profile.waistCm) { profile.waistCm = null; said.push('Waist cleared'); }
+  else if (wc == null && profile.waistCm && !document.getElementById('rf-waist').value.trim()) { profile.waistCm = null; said.push('Waist cleared'); }
   profile.whtr = (profile.waistCm && profile.heightCm) ? computeWHtR(profile.waistCm, profile.heightCm) : null;
   if (said.length) commitRefine(said.join('. ') + '.');
 }
@@ -868,8 +879,8 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/data.facts.js?v=20261123-e327f8d"></script>
-<script src="shared/facts.js?v=20261123-e327f8d"></script>
-<script src="shared/statusbar.js?v=20261123-e327f8d"></script>
+<script src="shared/data.facts.js?v=20261123-61e850f"></script>
+<script src="shared/facts.js?v=20261123-61e850f"></script>
+<script src="shared/statusbar.js?v=20261123-61e850f"></script>
 </body>
 </html>
