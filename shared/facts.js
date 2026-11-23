@@ -33,6 +33,7 @@
   function flash(btn, msg) { var o = btn.textContent; btn.textContent = msg; setTimeout(function () { btn.textContent = o; }, 1600); }
   function mount(f) {
     var main = document.querySelector('main'); if (!main || document.getElementById('fact-card')) return;
+    var wrap = document.createElement('div'); wrap.className = 'fact-wrap';
     var card = document.createElement('aside');
     card.id = 'fact-card'; card.className = 'fact-card'; card.setAttribute('aria-label', 'Did you know');
     card.innerHTML =
@@ -41,9 +42,10 @@
       '<p class="fact-body">' + esc(f.claim) + '</p>' +
       '<p class="fact-src">Source: <a href="' + esc(f.source.url) + '" target="_blank" rel="noopener">' + esc(f.source.org) + ', ' + esc(f.source.title) + '</a>' +
       (f.source.pageDate ? ' &middot; ' + esc(f.source.pageDate) : '') + '. ' + esc(f.caveat || '') + '</p>' +
-      '<div class="fact-actions"><button type="button" class="btn-fact" id="fact-share">Share this</button>' +
-      '<button type="button" class="btn-fact ghost" id="fact-copy">Copy</button></div>';
-    main.insertAdjacentElement('afterend', card);
+      '<div class="fact-actions"><button type="button" class="btn" id="fact-share">Share this</button>' +
+      '<button type="button" class="btn secondary" id="fact-copy">Copy</button></div>';
+    wrap.appendChild(card);
+    main.insertAdjacentElement('afterend', wrap);
     var text = shareText(f);
     document.getElementById('fact-share').addEventListener('click', function () {
       var b = this;

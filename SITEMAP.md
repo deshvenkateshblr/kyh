@@ -79,3 +79,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.5 - traditional exercise names
 - The Sanskrit/Indian name (data aka) now shows under each exercise title instead of only inside the demo view.
+
+## v2.6 - fact card restyle
+- Did-you-know card now uses the test-card look (square panel, teal edge, mono labels) and the standard buttons, aligned to the page column.
