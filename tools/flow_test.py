@@ -456,6 +456,14 @@ def quick_day(browser, base):
     prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': []}
     inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'routine.html')
     page.wait_for_selector('.dt-card')
+    page.locator('#continue-btn').click()
+    check('usual day' in page.inner_text('#time-msg').lower(), 'quick: continuing with nothing chosen explains what to pick')
+    page.locator('.dt-card[data-day="sit"]').click()
+    check(page.inner_text('#time-msg').strip() == '', 'quick: the message goes away once a day type is chosen')
+    page.locator('#continue-btn').click()
+    check('exercise' in page.inner_text('#time-msg').lower(), 'quick: exercise question explains itself')
+    page.locator('label[for="ex-none"]').click()
+    check(page.inner_text('#time-msg').strip() == '', 'quick: the message goes away once exercise is chosen')
     page.locator('.dt-card[data-day="sit"]').click(); page.locator('label[for="ex-none"]').click()
     resting = 10 * 80 + 6.25 * 172 - 5 * 45 + 5
     page.locator('.dt-card[data-day="hard"]').click(); page.locator('label[for="ex-5+"]').click()

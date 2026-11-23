@@ -73,3 +73,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.3 - waist accepts inches
 - Refine panel waist box takes "88", "88 cm", "34 in" (a bare number under 50 is read as inches) and shows the conversion; no trip to the full form.
+
+## v2.4 - routine message clears
+- The "please choose..." message on the Routine page clears as soon as the person answers.
