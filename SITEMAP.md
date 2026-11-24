@@ -86,3 +86,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 ## v2.7 - polish
 - "Make this list better" prompt is compact; numbered circles replaced by a clickable progress bar (tests and exercises).
 - Did-you-know card: no review date, no Copy; WhatsApp and X buttons on desktop, native Share on phones.
+
+## v2.8 - body facts (verify)
+- 8 more facts added as status verify (NIH kidney/heart/eye/bone/strength, ADA movement breaks, AHA walk after meals, ICMR tea gap). Approved source list is now data (FACT_APPROVED_SOURCES) and the checker enforces it.

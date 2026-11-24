@@ -3,7 +3,8 @@
    the card wording never goes beyond the quote. The source organisation is the authority; we only quote faithfully.
    status 'ready' = quote checked against the live page on `checked`; 'verify' = needs a look before use.
    `area`: tests | routine | diet | avoid.  `when`: optional audience filter (sex, minAge, smoker).
-   Approved sources: ACS, AHA, ADA, NIH ODS, NIH NCCIH, Arthritis Foundation, ICMR-NIN. */
+   Approved sources: see FACT_APPROVED_SOURCES below; tools/check_facts.py fails any fact whose source org is not on it. */
+window.FACT_APPROVED_SOURCES = ['American Cancer Society', 'American Heart Association', 'American Diabetes Association', 'NIH Office of Dietary Supplements', 'NIH NCCIH', 'NIH NIDDK', 'NIH NHLBI', 'NIH NEI', 'NIH NIAMS', 'NIH NIA', 'Arthritis Foundation', 'ICMR-NIN'];
 window.FACTS_SHARE_BASE = 'https://vividnova.com/kyh/';
 
 (function () {
@@ -110,6 +111,56 @@ window.FACTS_SHARE_BASE = 'https://vividnova.com/kyh/';
       source: { org: 'American Cancer Society', title: 'Health Risks of Smoking Tobacco', url: 'https://www.cancer.org/cancer/risk-prevention/tobacco/health-risks-of-smoking-tobacco.html', pageDate: 'No revision date found in the part read' },
       caveat: 'United States figures. The page does not say "quitting helps at any age" in those words.',
       hook: hook('Tell us if you smoke and we add the right checks.', 'Get my starter list'), status: 'ready', checked: T },
+
+    /* ---- body and anatomy, plus liked routine and diet tips: quotes relayed by a page summariser, not yet checked word for word ---- */
+    { id: 'niddk-kidneys', area: 'tests', topic: 'body', kind: 'fact', headline: 'Your kidneys filter 150 quarts of blood a day',
+      claim: 'NIDDK says your kidneys filter about 150 quarts of blood in a single day, and only 1 to 2 quarts become urine. The hormones they make help control blood pressure, make red blood cells and keep bones strong.',
+      quote: 'In a single day, your kidneys filter about 150 quarts of blood.',
+      source: { org: 'NIH NIDDK', title: 'Your Kidneys & How They Work', url: 'https://www.niddk.nih.gov/health-information/kidney-disease/kidneys-how-they-work', pageDate: 'Reviewed June 2018' },
+      caveat: 'Quarts as on the page; 150 quarts is about 140 litres (our conversion).',
+      hook: hook('See whether a kidney check is on your list.', 'Get my starter list'), status: 'verify', checked: T },
+    { id: 'nhlbi-resting-heart-rate', area: 'tests', topic: 'body', kind: 'fact', headline: 'Check your pulse: 60 to 100 is normal at rest',
+      claim: 'NHLBI says a resting heart rate of 60 to 100 beats per minute is normal. Your heart is about the size of your fist.',
+      quote: 'At rest, a heart rate of 60 to 100 beats per minute is normal.',
+      source: { org: 'NIH NHLBI', title: 'How the Heart Works: How the Heart Beats', url: 'https://www.nhlbi.nih.gov/health/heart/heart-beats', pageDate: 'Updated June 25, 2025' },
+      caveat: 'The fist-size line is on a second NHLBI page (How the Heart Works, updated March 2022).',
+      hook: hook('See which checks fit your age and sex.', 'Get my starter list'), status: 'verify', checked: T },
+    { id: 'nei-20-20-20', area: 'routine', topic: 'body', kind: 'fact', headline: 'Rest your eyes: 20-20-20',
+      claim: 'The National Eye Institute says that every 20 minutes you can look about 20 feet away for 20 seconds to rest your eyes.',
+      quote: 'Every 20 minutes, look about 20 feet away for 20 seconds.',
+      source: { org: 'NIH NEI', title: 'Healthy Vision Tips', url: 'https://nei.nih.gov/learn-about-eye-health/nei-for-kids/healthy-vision-tips', pageDate: 'Updated Dec 10, 2025' },
+      caveat: 'About 6 metres, 20 feet. The page is on NEI\u2019s kids section.',
+      hook: hook('Find your daily routine in two taps.', 'Start my routine'), status: 'verify', checked: T },
+    { id: 'niams-bones-work', area: 'routine', topic: 'body', kind: 'fact', headline: 'Bones get stronger when they work',
+      claim: 'NIAMS says weight-bearing exercise such as brisk walking, jogging and dancing, and resistance exercise, put stress on bones so they can become stronger.',
+      quote: 'These exercises put stress on bones, so they can make bones stronger as well.',
+      source: { org: 'NIH NIAMS', title: 'Exercise for Your Bone Health', url: 'https://www.niams.nih.gov/health-topics/exercise-your-bone-health', pageDate: 'No review date shown' },
+      caveat: 'The quote is about resistance exercise; the weight-bearing line is the sentence before it.',
+      hook: hook('Get movements matched to your age and profile.', 'Get my plan'), status: 'verify', checked: T },
+    { id: 'nia-strength-twice', area: 'routine', topic: 'body', kind: 'fact', headline: 'Strength twice a week keeps you independent',
+      claim: 'The National Institute on Aging says muscle-strengthening activities improve physical function, help you stay independent, slow muscle loss and help prevent falls. Aim for at least two days a week, and about three balance sessions.',
+      quote: 'Try doing muscle-strengthening activities at least two days per week',
+      source: { org: 'NIH NIA', title: 'Three Types of Exercise Can Improve Your Health and Physical Ability', url: 'https://www.nia.nih.gov/health/exercise-and-physical-activity/three-types-exercise-can-improve-your-health-and-physical', pageDate: 'Reviewed Jan 14, 2025' },
+      caveat: 'Written for older adults; the habit helps at any age.',
+      hook: hook('Get movements matched to your age and profile.', 'Get my plan'), status: 'verify', checked: T },
+    { id: 'ada-move-3-min', area: 'routine', kind: 'fact', headline: 'Three minutes of movement every half hour',
+      claim: 'The American Diabetes Association says three minutes of movement every half hour improved blood glucose levels, and advises breaking up sitting with brief activity every 30 minutes.',
+      quote: 'break up bouts of sitting with brief activity every 30 minutes.',
+      source: { org: 'American Diabetes Association', title: 'Break the Sitting Streak', url: 'https://diabetes.org/health-wellness/fitness/break-sitting-streak', pageDate: 'No review date on the page' },
+      caveat: 'The glucose result is from a study in adults with type 2 diabetes.',
+      hook: hook('Find your daily routine in two taps.', 'Start my routine'), status: 'verify', checked: T },
+    { id: 'aha-walk-after-meals', area: 'routine', kind: 'fact', headline: 'A 10-minute walk after each meal',
+      claim: 'The American Heart Association suggests 10 minutes of brisk walking after breakfast, lunch and dinner as one way to reach 150 minutes a week.',
+      quote: '10 minutes of brisk walking after breakfast, lunch and dinner',
+      source: { org: 'American Heart Association', title: 'Why Is Walking the Most Popular Form of Exercise?', url: 'https://www.heart.org/en/healthy-living/exercise-and-physical-activity/walking/why-is-walking-the-most-popular-form-of-exercise', pageDate: 'Last reviewed Jan 19, 2024' },
+      caveat: 'Quote is a fragment; check the full sentence.',
+      hook: hook('Find your daily routine in two taps.', 'Start my routine'), status: 'verify', checked: T },
+    { id: 'icmr-tea-iron', area: 'diet', kind: 'fact', headline: 'Chai after lunch? Give it an hour',
+      claim: 'ICMR-NIN says tea and coffee should be avoided for at least an hour before and after meals, because the tannins in them interfere with iron absorption.',
+      quote: 'tea and coffee should be avoided at least for one hour before and after meals.',
+      source: { org: 'ICMR-NIN', title: 'Dietary Guidelines for Indians (2024), Guideline 14', url: ICMR, pageDate: 'June 2024' },
+      caveat: 'Matters most for people with low iron or anaemia. A precaution, not a ban. PDF: the weekly checker skips PDFs, so check by hand.',
+      hook: hook('See whether an iron check belongs on your list.', 'Get my starter list'), status: 'verify', checked: T },
 
     /* ---- held back until verified ---- */
     { id: 'ods-iron-vegetarian', area: 'diet', kind: 'fact', headline: 'Vegetarians need more iron',

@@ -18,9 +18,16 @@ def fetch(url):
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (KYH fact checker)'})
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.read().decode('utf-8', 'replace')
+def approved():
+    js = "global.window=global;require('./%s');console.log(JSON.stringify(FACT_APPROVED_SOURCES))" % SRC
+    return set(json.loads(subprocess.check_output(['node', '-e', js])))
 def main():
     fix = '--fix' in sys.argv
     bad = []; unreachable = []
+    ok_orgs = approved()
+    for f in load():
+        if f['source']['org'] not in ok_orgs:
+            print('FAIL ', f['id'], 'source not on the approved list:', f['source']['org']); bad.append(f['id'])
     for f in load():
         if f['status'] != 'ready': continue
         url = f['source']['url']
