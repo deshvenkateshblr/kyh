@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261123-6e3ed2f">
+<link rel="stylesheet" href="shared/styles.css?v=20261124-db4862f">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -17,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261123-6e3ed2f">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261124-db4862f">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/kyh/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261123-6e3ed2f">
+<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261124-db4862f">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261123-6e3ed2f"></script>
-<script src="shared/utils.js?v=20261123-6e3ed2f"></script>
-<script src="shared/data.symptoms.js?v=20261123-6e3ed2f"></script>
-<script src="shared/vault.js?v=20261123-6e3ed2f"></script>
+<script src="shared/data.diagnostics.js?v=20261124-db4862f"></script>
+<script src="shared/utils.js?v=20261124-db4862f"></script>
+<script src="shared/data.symptoms.js?v=20261124-db4862f"></script>
+<script src="shared/vault.js?v=20261124-db4862f"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -648,7 +648,7 @@ function refineSummaryHtml() {
   if (profile.dietType) bits.push(`${esc(profile.dietType)} diet`);
   return bits.length
     ? `Refined with ${bits.join(' &middot; ')}`
-    : `Add your BMI, symptoms and diet to sharpen this list. Each one changes it right here, and everything is optional.`;
+    : `A little more context makes it more specific to you. Optional.`;
 }
 
 function renderRefinePanel() {
@@ -656,10 +656,10 @@ function renderRefinePanel() {
   const open = location.hash === '#refine';
   slot.innerHTML = `
   <section class="note-block refine-panel" id="refine">
-    <span class="k">Refine this list</span>
-    <p id="refine-summary" style="margin:8px 0 12px;font-size:14.5px;line-height:1.6;">${refineSummaryHtml()}</p>
-    <button type="button" class="btn secondary" id="refine-toggle" aria-expanded="${open}" aria-controls="refine-body">${open ? 'Close' : 'Refine my list &darr;'}</button>
-    <div id="refine-body" ${open ? '' : 'hidden'} style="margin-top:20px;">
+    <div class="refine-row"><div><span class="k">Make this list better</span>
+    <p id="refine-summary">${refineSummaryHtml()}</p></div>
+    <button type="button" class="btn secondary" id="refine-toggle" aria-expanded="${open}" aria-controls="refine-body">${open ? 'Close' : 'Add context &darr;'}</button></div>
+    <div id="refine-body" ${open ? '' : 'hidden'} style="margin-top:16px;">
       <div class="refine-step" data-step="0">
         <div class="refine-step-h"><b>1 &middot; Body size (BMI)</b></div>
         <p class="refine-why">BMI decides whether metabolic tests, such as blood sugar and cholesterol, are on your list. A waist more than half your height adds heart and metabolic tests even when BMI looks fine.</p>
@@ -706,7 +706,7 @@ function renderRefinePanel() {
   function setOpen(show) {
     body.hidden = !show;
     toggle.setAttribute('aria-expanded', String(show));
-    toggle.innerHTML = show ? 'Close' : (hasAnyRefinement() ? 'Change my answers &darr;' : 'Refine my list &darr;');
+    toggle.innerHTML = show ? 'Close' : (hasAnyRefinement() ? 'Change my answers &darr;' : 'Add context &darr;');
   }
   toggle.addEventListener('click', () => {
     const show = body.hidden;
@@ -879,8 +879,8 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/data.facts.js?v=20261123-6e3ed2f"></script>
-<script src="shared/facts.js?v=20261123-6e3ed2f"></script>
-<script src="shared/statusbar.js?v=20261123-6e3ed2f"></script>
+<script src="shared/data.facts.js?v=20261124-db4862f"></script>
+<script src="shared/facts.js?v=20261124-db4862f"></script>
+<script src="shared/statusbar.js?v=20261124-db4862f"></script>
 </body>
 </html>

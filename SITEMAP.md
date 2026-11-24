@@ -82,3 +82,7 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.6 - fact card restyle
 - Did-you-know card now uses the test-card look (square panel, teal edge, mono labels) and the standard buttons, aligned to the page column.
+
+## v2.7 - polish
+- "Make this list better" prompt is compact; numbered circles replaced by a clickable progress bar (tests and exercises).
+- Did-you-know card: no review date, no Copy; WhatsApp and X buttons on desktop, native Share on phones.

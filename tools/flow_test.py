@@ -105,7 +105,7 @@ def full_flow(page, base, problems):
     # --- first list, from age and sex alone
     page.wait_for_selector('.test-card')
     check(page.locator('.test-card').count() > 0, 'tests: a starter list is shown from age and sex alone')
-    check('refine this list' in page.inner_text('main').lower(), 'tests: offers to refine with BMI and dietary preference')
+    check('make this list better' in page.inner_text('main').lower(), 'tests: offers to add context with BMI and dietary preference')
     starter = card_names(page)
 
     # --- refine in place: the panel opens on the tests page; each change redraws the list, no new screen
@@ -443,6 +443,9 @@ def fact_cards(browser, base):
         if area:
             ok = page.evaluate("(a) => { const t = document.querySelector('#fact-card .fact-head').textContent; return FACTS.some(f => f.area === a && f.status === 'ready' && f.headline === t); }", area)
             check(ok, f'fact card on {pg} comes from the {area} facts')
+    check(page.locator('#fact-x').count() == 1 and page.locator('#fact-wa').count() == 1, 'fact card offers WhatsApp and X on desktop')
+    check(page.locator('#fact-copy').count() == 0, 'fact card has no Copy button')
+    check('reviewed' not in page.locator('.fact-src').inner_text().lower(), 'fact card shows no review date')
     txt = page.evaluate("() => { const f = FACTS.find(x => x.status === 'ready'); return KYH_FACT_SHARE_TEXT(f); }")
     check('vividnova.com/kyh/?ref=fact-' in txt and 'Source:' in txt, 'share text carries the source and a link back to the app', txt[-120:])
     check('52' not in txt.split('Source:')[0] and 'Vegetarian' not in txt and 'Female' not in txt, 'share text carries no personal answers')

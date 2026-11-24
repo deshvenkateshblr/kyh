@@ -41,22 +41,21 @@
       '<h3 class="fact-head">' + esc(f.headline) + '</h3>' +
       '<p class="fact-body">' + esc(f.claim) + '</p>' +
       '<p class="fact-src">Source: <a href="' + esc(f.source.url) + '" target="_blank" rel="noopener">' + esc(f.source.org) + ', ' + esc(f.source.title) + '</a>' +
-      (f.source.pageDate ? ' &middot; ' + esc(f.source.pageDate) : '') + '. ' + esc(f.caveat || '') + '</p>' +
-      '<div class="fact-actions"><button type="button" class="btn" id="fact-share">Share this</button>' +
-      '<button type="button" class="btn secondary" id="fact-copy">Copy</button></div>';
+      (f.caveat ? '. ' + esc(f.caveat) : '') + '</p>' +
+      '<div class="fact-actions" id="fact-actions"></div>';
     wrap.appendChild(card);
     main.insertAdjacentElement('afterend', wrap);
-    var text = shareText(f);
-    document.getElementById('fact-share').addEventListener('click', function () {
-      var b = this;
-      if (navigator.share) { navigator.share({ title: f.headline, text: text }).catch(function () {}); }
-      else { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener'); }
-    });
-    document.getElementById('fact-copy').addEventListener('click', function () {
-      var b = this;
-      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { flash(b, 'Copied'); }, function () { flash(b, 'Copy failed'); });
-      else flash(b, 'Copy not available');
-    });
+    var text = shareText(f), link = (window.FACTS_SHARE_BASE || '') + '?ref=fact-' + f.id;
+    var xText = (f.kind === 'myth' ? 'Myth check: ' : 'Did you know? ') + f.headline + '. ' + f.hook.text + ' (' + f.source.org + ')';
+    var box = document.getElementById('fact-actions');
+    function btn(label, id, secondary) { var b = document.createElement('button'); b.type = 'button'; b.id = id; b.className = 'btn' + (secondary ? ' secondary' : ''); b.textContent = label; box.appendChild(b); return b; }
+    var phone = window.matchMedia && matchMedia('(pointer:coarse)').matches && navigator.share;
+    if (phone) {
+      btn('Share this', 'fact-share').addEventListener('click', function () { navigator.share({ title: f.headline, text: text }).catch(function () {}); });
+    } else {
+      btn('Share on WhatsApp', 'fact-wa').addEventListener('click', function () { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener'); });
+      btn('Share on X', 'fact-x', true).addEventListener('click', function () { window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(link), '_blank', 'noopener'); });
+    }
   }
   function init() { var f = pick(AREA_BY_PAGE[page]); if (f) mount(f); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
