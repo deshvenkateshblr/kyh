@@ -1619,3 +1619,12 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .refine-panel .refine-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 14px; }
 .refine-panel .refine-row p { margin:2px 0 0; font-size:13.5px; line-height:1.45; }
 .refine-panel .refine-row .btn { padding:8px 14px; font-size:11.5px; }
+
+/* Narrow screens and large text: nothing may be wider than the window (iPhone Safari shrinks the whole page otherwise) */
+@media (max-width: 640px) {
+  .info-tooltip-content { position: fixed; left: 16px; right: 16px; bottom: 44px; transform: none; width: auto; max-width: none; }
+  .info-tooltip-content::after { display: none; }
+}
+.radio-pair { flex-wrap: wrap; }
+.refine-back { background:none; border:0; padding:6px 2px; cursor:pointer; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; }
+.fq-title { margin-bottom:6px; }

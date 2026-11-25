@@ -11,7 +11,7 @@
 
   var FEEDBACK_TO = 'info@vividnova.com';
 
-  var APP_VERSION = '2.8';
+  var APP_VERSION = '2.9';
 
   function build() {
     var me = document.currentScript || document.querySelector('script[src*="statusbar.js"]');
@@ -31,7 +31,7 @@
     'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;',
     'background:#fff;border-top:1px solid #d7ddd2;color:#5a665e;white-space:nowrap;overflow:hidden;',
     'font:11px/1 ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;letter-spacing:.04em}',
-    '#kyh-statusbar .kyh-sb-v{overflow:hidden;text-overflow:ellipsis}',
+    '#kyh-statusbar .kyh-sb-v{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}',
     '#kyh-statusbar .kyh-sb-actions{display:flex;align-items:center;gap:16px;flex:none}',
     '#kyh-statusbar a,#kyh-statusbar button{font:inherit;letter-spacing:inherit;text-transform:uppercase;color:#1b7164;',
     'background:none;border:0;padding:6px 2px;margin:0;cursor:pointer;text-decoration:none}',

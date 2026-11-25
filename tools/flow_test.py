@@ -465,6 +465,23 @@ def exercise_aka(browser, base):
     page.close()
 
 
+def phone_fit(browser, base):
+    print('\nPhone fit with large text')
+    page = browser.new_page(viewport={'width': 390, 'height': 850})
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': ['Fatigue'], 'smoking': 'Never', 'dietType': 'Vegetarian'}
+    state = {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'mode': 'simple', 'dayType': 'sit', 'exerciseDays': 'none', 'estimatedCalories': 2200, 'activities': [], 'activitiesConfirmed': True}}
+    bad = []
+    for pg in ('index.html', 'profile.html', 'diagnostics.html', 'symptoms.html', 'routine.html', 'diet.html', 'diet-synthesis.html', 'summary.html', 'nextsteps.html', 'routine-plan.html', 'routine-config.html'):
+        inject(page, base, state, pg)
+        page.wait_for_timeout(500)
+        page.evaluate("""() => { const all = [...document.querySelectorAll('body *')]; const f0 = all.map(e => parseFloat(getComputedStyle(e).fontSize)); all.forEach((e, i) => { if (f0[i]) e.style.setProperty('font-size', (f0[i] * 1.5) + 'px', 'important'); }); }""")
+        page.wait_for_timeout(200)
+        w = page.evaluate("() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")
+        if w[0] > w[1] + 1: bad.append(f'{pg} {w[0]}>{w[1]}')
+    check(not bad, 'no page is wider than a 390px phone with text at 150%', bad)
+    page.close()
+
+
 def quick_day(browser, base):
     print('\nRoutine: quick day type')
     page = browser.new_page(viewport={'width': 390, 'height': 900})
@@ -836,6 +853,10 @@ def main():
             exercise_aka(browser, base)
         except Exception as e:
             check(False, 'exercise name checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            phone_fit(browser, base)
+        except Exception as e:
+            check(False, 'phone fit checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             quick_day(browser, base)
         except Exception as e:

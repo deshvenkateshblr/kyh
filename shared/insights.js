@@ -1311,10 +1311,10 @@ const KYH_BRAND_BLURB =
     // as summarizeSection does, so it doesn't turn into a broken sentence.
     const routineSentence = (routine.length === 1 && /-none$/.test(routine[0].id))
       ? routine[0].detail
-      : domainStatusSentence(routine, 'Your routine looks', 'steady across', 'has room to improve on');
+      : domainStatusSentence(routine, 'Your routine', 'looks steady across', 'has room to improve on');
     const dietSentence = (diet.length === 1 && /-none$/.test(diet[0].id))
       ? diet[0].detail
-      : domainStatusSentence(diet, 'Your diet looks', 'well-aligned on', 'has a few gaps in');
+      : domainStatusSentence(diet, 'Your diet', 'looks well-aligned on', 'has a few gaps in');
     const combined = [routineSentence, dietSentence].filter(Boolean).join(' ');
     if (combined) parts.push(combined);
 

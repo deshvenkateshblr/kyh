@@ -89,3 +89,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.8 - body facts (verify)
 - 8 more facts added as status verify (NIH kidney/heart/eye/bone/strength, ADA movement breaks, AHA walk after meals, ICMR tea gap). Approved source list is now data (FACT_APPROVED_SOURCES) and the checker enforces it.
+
+## v2.9 - layout audit
+- Tooltips fixed to the window on phones (they made the Tests page wider than the screen with large text); nextsteps sub-nav wraps; status bar and radio pairs shrink/wrap; unstyled Change button on Diet; summary grammar ("looks has").
