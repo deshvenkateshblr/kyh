@@ -150,7 +150,20 @@ function wireExportActions() {
   const sv = document.getElementById('btn-save-findings');
   const pr = document.getElementById('btn-print-findings');
   if (sv) sv.addEventListener('click', () => { downloadText('KYH-findings-'+new Date().toISOString().slice(0,10)+'.txt', formatAllFindingsText()); });
-  if (pr) pr.addEventListener('click', () => { clearPrintMode(); fillPrintDocument(); window.print(); });
+  // "Print doctor brief" is the main finish: it uses the same print path as the brief panel
+  if (pr) pr.addEventListener('click', () => {
+    const pb = document.getElementById('btn-print-brief');
+    if (pb) { pb.click(); return; }
+    clearPrintMode(); fillPrintDocument(); window.print();
+  });
+  // Sharing the app (never answers): discovery is the point
+  const sh = document.getElementById('btn-share-kyh');
+  if (sh) sh.addEventListener('click', () => {
+    const link = (window.FACTS_SHARE_BASE || 'https://vividnova.com/kyh/') + '?ref=finish';
+    const text = 'I used KYH to get ready for my doctor visit: a starter list of tests and a one-page brief of questions. Free and private, nothing leaves the browser.';
+    if (navigator.share && window.matchMedia && matchMedia('(pointer:coarse)').matches) navigator.share({ title: 'KYH: Know Your Health', text: text, url: link }).catch(function () {});
+    else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + link), '_blank', 'noopener');
+  });
 }
 function wireVideoShowMore() {
   document.querySelectorAll('[id$="-more-btn"]').forEach(btn => {
@@ -318,10 +331,10 @@ function render() {
     + '<div class="db-preview-wrap" id="db-preview-wrap"><div class="db-preview-scaler" id="db-preview-scaler"><div id="db-preview"></div></div></div>'
     + '<button type="button" class="btn" id="btn-print-brief" style="margin:0 0 4px;">Print doctor brief</button>';
 
-  const aiPanel = '<p style="font-size:14px;margin:0 0 6px;">Four ready-to-copy prompts &mdash; pick the conversation you want to have.</p>'
+  const aiPanel = '<p style="font-size:14px;margin:0 0 6px;">Three ready-to-copy prompts, or all together &mdash; pick the conversation you want to have.</p>'
     + '<p style="font-size:12.5px;color:var(--muted);margin:0 0 16px;">Tip: consider a private / incognito session first. More on this under <em>Your insights</em>.</p>'
     + '<div class="field" style="max-width:440px;margin-bottom:16px;"><label class="intake-label" for="ai-prompt-select">Choose a prompt</label>'
-    + '<select id="ai-prompt-select"><option value="all">All three, with shared context</option>'
+    + '<select id="ai-prompt-select"><option value="all">All three together, with shared context</option>'
     + aiPrompt.sections.map(s=>'<option value="'+esc(s.key)+'">'+esc(s.label)+'</option>').join('')
     + '</select></div><div class="prompt-box" id="ai-prompt-display" tabindex="0" role="region" aria-label="AI prompt text"></div>'
     + '<button type="button" class="btn" id="copy-prompt-btn" style="margin:0 0 4px;" aria-live="polite">Copy this prompt</button>';
@@ -359,10 +372,12 @@ function render() {
     + '<div class="page-footer-nav no-print"><a href="diet.html" class="btn secondary">&larr; Back</a>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;">'
     + '<button type="button" class="btn secondary" id="btn-save-findings">Save findings</button>'
-    + '<button type="button" class="btn secondary" id="btn-print-findings">Print findings</button>'
-    + '<a href="index.html" class="btn">Done</a></div></div>';
+    + '<button type="button" class="btn secondary" id="btn-share-kyh">Share KYH</button>'
+    + '<button type="button" class="btn" id="btn-print-findings">Print doctor brief</button></div></div>';
 
   wireOutcomeCards();
+  // The Doctor Brief is the main deliverable: show it open, no extra click.
+  (function () { const c = document.querySelector('.outcome-card[data-panel="panel-doctor"]'), pn = document.getElementById('panel-doctor'); if (c && pn) { c.classList.add('is-active'); c.setAttribute('aria-expanded', 'true'); pn.classList.add('is-open'); } })();
   wireAIPrompt(AI_OPTS);
   wireVideoShowMore();
   wireStepToggles();

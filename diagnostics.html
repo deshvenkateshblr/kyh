@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261125-a71116c">
+<link rel="stylesheet" href="shared/styles.css?v=20261125-caca618">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -17,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261125-a71116c">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261125-caca618">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/kyh/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261125-a71116c">
+<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261125-caca618">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261125-a71116c"></script>
-<script src="shared/utils.js?v=20261125-a71116c"></script>
-<script src="shared/data.symptoms.js?v=20261125-a71116c"></script>
-<script src="shared/vault.js?v=20261125-a71116c"></script>
+<script src="shared/data.diagnostics.js?v=20261125-caca618"></script>
+<script src="shared/utils.js?v=20261125-caca618"></script>
+<script src="shared/data.symptoms.js?v=20261125-caca618"></script>
+<script src="shared/vault.js?v=20261125-caca618"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -461,18 +461,6 @@ function renderResultsStage(){
   </div>
   <p class="lede">${symptomLine}</p>`;
   document.getElementById('res-list').innerHTML = `
-  <div id="soft-gate-banner" style="display:none; border:2px solid var(--amber); background:var(--amber-soft); padding:16px 18px; margin-bottom:28px; color:#5a3d1c;" role="status">
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">A few tests unanswered</div>
-    <div style="font-size:14px;line-height:1.6;">
-      Knowing which tests you&rsquo;ve already had lets us highlight exactly what&rsquo;s still missing &mdash;
-      your summary and action plan sharpen with every answer.
-    </div>
-    <div style="margin-top:10px;">
-      <a href="#" id="soft-gate-continue-link" style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);text-decoration:underline;">
-        That&rsquo;s fine &mdash; continue anyway &rarr;
-      </a>
-    </div>
-  </div>
   <div class="tp-bar">
     <div id="tp-pills" class="tp-pills" aria-label="Jump to a test"></div>
     <div class="tp-meta"><span id="tp-range"></span><span id="answer-counter"></span></div>
@@ -594,38 +582,8 @@ function renderResultsStage(){
     goTo('routine.html', Object.assign({}, state, {diagnostics}));
   }
 
-  document.getElementById('soft-gate-continue-link').addEventListener('click', e => {
-    e.preventDefault();
-    proceedToNext();
-  });
-
-  document.getElementById('continue-btn').addEventListener('click', () => {
-    const n = countAnswered(), total = document.querySelectorAll('.test-card').length;
-    if (n < total && !confirmPending) {
-      confirmPending = true;
-      // Show banner at top and scroll to it
-      const banner = document.getElementById('soft-gate-banner');
-      banner.style.display = '';
-      banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Update footer counter to a simple amber count (no long message — banner handles it)
-      const el = document.getElementById('answer-counter');
-      el.textContent = `${n} of ${total} answered`;
-      el.style.color = 'var(--amber)';
-      el.style.fontWeight = '600';
-      el.style.fontSize = '12px';
-      document.getElementById('continue-btn').textContent = 'Continue anyway \u2192';
-      // Flash all unanswered cards
-      const unanswered = [...document.querySelectorAll('.test-card')]
-        .filter(card => !isDecided(card));
-      unanswered.forEach(card => {
-        card.classList.remove('card-needs-answer');
-        void card.offsetWidth;
-        card.classList.add('card-needs-answer');
-      });
-      return;
-    }
-    proceedToNext();
-  });
+  // Unanswered tests are fine: they simply stay unanswered. No extra confirmation step.
+  document.getElementById('continue-btn').addEventListener('click', proceedToNext);
 }
 
 /* ---- Refine panel: expands in place; every change re-draws the list below without leaving the page ----
@@ -879,8 +837,8 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/data.facts.js?v=20261125-a71116c"></script>
-<script src="shared/facts.js?v=20261125-a71116c"></script>
-<script src="shared/statusbar.js?v=20261125-a71116c"></script>
+<script src="shared/data.facts.js?v=20261125-caca618"></script>
+<script src="shared/facts.js?v=20261125-caca618"></script>
+<script src="shared/statusbar.js?v=20261125-caca618"></script>
 </body>
 </html>

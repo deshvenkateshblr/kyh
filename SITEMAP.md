@@ -92,3 +92,8 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v2.9 - layout audit
 - Tooltips fixed to the window on phones (they made the Tests page wider than the screen with large text); nextsteps sub-nav wraps; status bar and radio pairs shrink/wrap; unstyled Change button on Diet; summary grammar ("looks has").
+
+## v3.0 - honest flow
+- Home promises match the product (a minute for a starter list, about ten for the full picture; routine is a two-tap estimate with optional hour-by-hour). Steps named Profile / Tests / Routine / Diet / Summary.
+- Tests: no "continue anyway" confirm step. Summary opens the Doctor Brief by default; finish = Save, Share KYH, Print doctor brief (no Done to home). Next steps ends at the Doctor Brief. AI prompt copy says three prompts plus all together.
+- routine-plan, routine-config and diet-synthesis were already merged into routine.html and diet.html (redirect shells); each section already has a skip.

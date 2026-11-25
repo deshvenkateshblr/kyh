@@ -507,12 +507,12 @@ function esc(s) {
 const HEADER_STEPS = [
   {
     id: 'fine',
-    label: 'Fine',
+    label: 'Profile',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-6-5.4-6-10a6 6 0 1 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>`
   },
   {
     id: 'diagnostics',
-    label: 'Diagnostics',
+    label: 'Tests',
     icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>`
   },
   {
@@ -527,7 +527,7 @@ const HEADER_STEPS = [
   },
   {
     id: 'great',
-    label: 'Great',
+    label: 'Summary',
     icon: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17.3 5.7 21.4 8 14 2 9.4h7.6z"/></svg>`
   }
 ];
@@ -568,7 +568,7 @@ function renderHeader(activeStep = 'fine', pageTitle = 'Know Your Health') {
         </a>
       </div>
       <div class="brand-caption"${Array.from(document.querySelectorAll('h1')).some(h => h.offsetParent !== null) ? '' : ' role="heading" aria-level="1"'}>${pageTitle}</div>
-      <div class="map-route" aria-label="Progress from Fine to Great">
+      <div class="map-route" aria-label="Progress through the five steps">
         ${stopsHtml}
       </div>
     </div>

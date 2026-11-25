@@ -482,6 +482,43 @@ def phone_fit(browser, base):
     page.close()
 
 
+def honest_flow(browser, base):
+    print('\nHonest promises, one-click finish')
+    page = browser.new_page(viewport={'width': 1100, 'height': 900})
+    prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': ['Fatigue'], 'smoking': 'Never', 'dietType': 'Vegetarian'}
+    page.goto(base + 'index.html'); page.wait_for_timeout(500)
+    home = page.inner_text('body').lower()
+    check('under 10 minutes' not in home and 'under ten minutes' not in home, 'home: no "under 10 minutes" claim')
+    check('24-hour activity ledger' not in home and 'hour by hour, see your energy' not in home, 'home: no hour-by-hour ledger promise on the routine card')
+    check('about a minute' in home and 'around ten' in home, 'home: states the honest time (a minute for a starter list, about ten for the full picture)')
+    check('five short steps' in home, 'home: steps heading is plain')
+    state = {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}
+    inject(page, base, state, 'diagnostics.html')
+    page.wait_for_selector('#continue-btn', state='attached')
+    labels = page.eval_on_selector_all('.map-route *', 'els => els.map(e => e.textContent.trim()).filter(Boolean)')
+    check('Profile' in labels and 'Tests' in labels and 'Summary' in labels and 'Fine' not in labels and 'Great' not in labels, 'header steps use plain names', labels[:8])
+    for _ in range(6):
+        if page.locator('#continue-btn').is_visible(): break
+        page.locator('#tp-next').click()
+    page.locator('#continue-btn').click()
+    page.wait_for_url('**/routine.html*', timeout=8000)
+    check(True, 'tests: Continue goes straight on with tests unanswered (no confirm step)')
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'mode': 'simple', 'dayType': 'sit', 'exerciseDays': 'none', 'estimatedCalories': 2200, 'activities': [], 'activitiesConfirmed': True}}, 'summary.html')
+    page.wait_for_selector('#panel-doctor', state='attached')
+    check(page.evaluate("() => document.getElementById('panel-doctor').classList.contains('is-open')"), 'summary: Doctor Brief is open without a click')
+    body = page.inner_text('main')
+    check('Done' not in [b.strip() for b in page.eval_on_selector_all('main .btn', 'els => els.map(e => e.textContent)')], 'summary: no Done button that sends people home')
+    check(page.locator('#btn-share-kyh').count() == 1 and page.locator('#btn-save-findings').count() == 1 and 'print doctor brief' in page.inner_text('.page-footer-nav').lower(), 'summary: finish offers Save, Share and Print')
+    check('Three ready-to-copy prompts' in page.inner_text('#panel-ai') or page.evaluate("() => document.getElementById('panel-ai').textContent.includes('Three ready-to-copy prompts')"), 'summary: AI prompt copy says three')
+    opt = page.eval_on_selector('#ai-prompt-select option', 'e => e.textContent')
+    n = page.eval_on_selector_all('#ai-prompt-select option', 'els => els.length')
+    check(n == 4 and 'together' in opt, 'summary: prompt picker is three prompts plus all together', opt)
+    inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'nextsteps.html')
+    page.wait_for_timeout(500)
+    check('open my doctor brief' in page.inner_text('main').lower() and page.locator('.page-footer-nav a[href="index.html"]').count() == 0, 'next steps: finish leads to the Doctor Brief, not home')
+    page.close()
+
+
 def quick_day(browser, base):
     print('\nRoutine: quick day type')
     page = browser.new_page(viewport={'width': 390, 'height': 900})
@@ -857,6 +894,10 @@ def main():
             phone_fit(browser, base)
         except Exception as e:
             check(False, 'phone fit checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            honest_flow(browser, base)
+        except Exception as e:
+            check(False, 'honest flow checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             quick_day(browser, base)
         except Exception as e:
