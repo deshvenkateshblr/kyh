@@ -1673,3 +1673,13 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .lab-keep { padding-top: 6px; }
 .lab-st { padding-top: 4px; }
 #lab-add-row { margin: 10px 0 0; }
+.lab-filter { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 10px; font: 11.5px var(--mono); color: var(--muted); }
+.lab-filter label { display: flex; flex-direction: column; gap: 4px; }
+.lab-filter input { font: 14px inherit; font-family: inherit; padding: 7px 9px; border: 1px solid var(--line); background: var(--panel); min-width: 0; max-width: 100%; }
+.lab-pick { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.lab-pick input { margin-top: 4px; }
+.lab-tests { display: block; font: 11.5px var(--mono); color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.lab-li-act { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.lab-reports li { align-items: flex-start; flex-wrap: wrap; }
+.lab-binder-act { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.lab-binder-act .btn[disabled] { opacity: .45; cursor: not-allowed; }

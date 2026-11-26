@@ -27,7 +27,7 @@ window.LAB_ANALYTES = [
     what: 'White cells involved in fighting viruses.', low: 'Can follow stress or some illnesses.', high: 'Often seen after viral infections.' },
   { key: 'plt', name: 'Platelets', group: 'Blood count', test: 'CBC', unit: 'thou/cumm', alias: ['platelet count', 'platelets', 'plt', 'platelet'],
     what: 'The cells that help blood clot.', low: 'Can follow infections such as dengue, some medicines and other causes. A doctor decides the cause.', high: 'Can accompany iron deficiency, inflammation or infection.' },
-  { key: 'esr', name: 'ESR', group: 'Inflammation', test: 'ESR', unit: 'mm/hr', alias: ['esr', 'erythrocyte sedimentation rate', 'esr westergren'],
+  { key: 'esr', name: 'ESR', group: 'Inflammation', test: 'ESR', unit: 'mm/hr', alias: ['esr', 'erythrocyte sedimentation rate', 'esr westergren', 'erythrocyte sedimentation rate esr', 'esr erythrocyte sedimentation rate'],
     what: 'A general marker that rises with inflammation.', low: 'Usually not a concern.', high: 'Non-specific: it can rise with infection, inflammation, anaemia and more.' },
   { key: 'crp', name: 'C-reactive protein (CRP)', group: 'Inflammation', test: 'CRP', unit: 'mg/L', alias: ['crp', 'c reactive protein', 'hs crp', 'hscrp', 'high sensitivity crp', 'c reactive protein crp', 'c reactive protein hs'],
     what: 'A marker that rises quickly with inflammation or infection.', low: 'Usually not a concern.', high: 'Non-specific: infection, injury and inflammation can all raise it.' },

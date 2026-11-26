@@ -100,3 +100,4 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 
 ## v3.1 — My lab reports (labs.html)
 Keep lab results in one place. Add a PDF (read in the browser with a vendored pdf.js, never uploaded), check each extracted value beside the page preview, and keep only confirmed values in the .kyh file. Status uses the range printed on the report; generic plain-language notes per test. Text PDFs only; scans and photos show the page for manual entry. Not a diagnosis.
+v3.1 addition: lab binder. Original report files are kept in this browser (IndexedDB) only; filter reports by date range and test or lab name, then save the selection as a .kylt bundle (zip with labs.json, manifest.json, values.csv and the original files) or just the files as a .zip. Opening a .kylt merges its reports and files. The .kyh file still carries values only. Uses vendored fflate.

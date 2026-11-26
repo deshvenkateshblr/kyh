@@ -558,6 +558,28 @@ def labs_module(browser, base):
     page.click('[data-del] >> nth=0'); page.wait_for_timeout(400)
     st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
     check(len((st.get('labs') or {}).get('results', [])) == 0, 'remove report clears its values')
+    # binder: two reports, filter by date and test, .kylt round trip
+    import zipfile as _z
+    ctx = browser.new_context(viewport={'width': 1200, 'height': 900}, accept_downloads=True)
+    p2 = ctx.new_page(); p2.on('dialog', lambda d: d.accept()); p2.on('pageerror', lambda e: errs.append(str(e)))
+    inject(p2, base, state, 'labs.html')
+    for f in ('style_a_table.pdf', 'style_c_plain.pdf'):
+        p2.set_input_files('#lab-file', _o.path.join(fx, f)); p2.wait_for_selector('#lab-save'); p2.wait_for_timeout(500); p2.click('#lab-save'); p2.wait_for_timeout(600)
+    check(p2.locator('.lab-reports li').count() == 2, 'binder lists both reports')
+    p2.fill('#lab-ff', '2026-03-10'); p2.wait_for_timeout(500)
+    check(p2.locator('.lab-reports li').count() == 1, 'filter by from-date')
+    p2.fill('#lab-ff', ''); p2.fill('#lab-fx', 'lipid'); p2.press('#lab-fx', 'Enter'); p2.wait_for_timeout(500)
+    check(p2.locator('.lab-reports li').count() == 1, 'filter by test name')
+    p2.fill('#lab-fx', ''); p2.press('#lab-fx', 'Enter'); p2.wait_for_timeout(400)
+    with p2.expect_download() as dl: p2.click('#lab-kylt-save')
+    kp = '/tmp/_flow.kylt'; dl.value.save_as(kp)
+    names = _z.ZipFile(kp).namelist()
+    check(dl.value.suggested_filename.endswith('.kylt') and sum(n.endswith('.pdf') for n in names) == 2 and 'labs.json' in names, '.kylt holds both PDFs and the values', str(names)[:120])
+    ctx2 = browser.new_context(viewport={'width': 1200, 'height': 900}); p3 = ctx2.new_page(); p3.on('pageerror', lambda e: errs.append(str(e)))
+    inject(p3, base, state, 'labs.html')
+    p3.set_input_files('#lab-kylt-file', kp); p3.wait_for_timeout(1200)
+    check(p3.locator('.lab-reports li').count() == 2 and p3.locator('[data-view]').count() == 2, 'opening a .kylt restores reports and files')
+    ctx.close(); ctx2.close()
     check(not errs, 'no script errors on labs page', str(errs[:2]))
     page.close()
 
