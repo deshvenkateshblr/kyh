@@ -1,0 +1,220 @@
+/* My lab reports: add a report, check the values it finds beside the page, keep them in one place.
+   The file is read in this browser and is never uploaded or stored. Only the values the person confirms are kept (state.labs),
+   so they travel in the .kyh file like everything else. Needs data.labs.js, utils.js, pdf.js, labs-parse.js. */
+(function () {
+  var state = loadState();
+  renderHeader('diagnostics', 'KYH-My lab reports');
+  renderFooter({ disclaimer: true });
+  var main = document.getElementById('main-content');
+  var sex = (state.profile && state.profile.sex) || null;
+  var STATUS = { normal: 'In range', borderline: 'Borderline', low: 'Low', high: 'High', abnormal: 'Check', '': 'No range' };
+  var MAX_RESULTS = 1400;
+  var cur = null;   // report being reviewed: { rows, meta, pdf, page, scale, kind, imgUrl }
+
+  function labs() { state.labs = state.labs || { reports: [], results: [] }; state.labs.reports = state.labs.reports || []; state.labs.results = state.labs.results || []; return state.labs; }
+  function persist() { persistState(state); }
+  function analyteByKey(k) { return (window.LAB_ANALYTES || []).filter(function (a) { return a.key === k; })[0] || null; }
+  function fmtDate(iso) { if (!iso) return 'undated'; var p = iso.split('-'); var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][(+p[1] || 1) - 1]; return (+p[2]) + ' ' + m + ' ' + p[0]; }
+  function badge(s) { return '<span class="lab-badge lab-' + (s || 'none') + '">' + STATUS[s || ''] + '</span>'; }
+  function uid() { return 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+
+  /* ================= list view ================= */
+  function renderList() {
+    cur = null;
+    var L = labs(), res = L.results;
+    var byKey = {};
+    res.forEach(function (r) { var k = r.k || ('n:' + (r.n || '').toLowerCase()); (byKey[k] = byKey[k] || []).push(r); });
+    var groups = {}, flagged = [];
+    Object.keys(byKey).forEach(function (k) {
+      var list = byKey[k].slice().sort(function (a, b) { return (b.d || '').localeCompare(a.d || ''); });
+      var a = analyteByKey(list[0].k), g = a ? a.group : 'Other';
+      (groups[g] = groups[g] || []).push({ a: a, list: list });
+      if (list[0].s && list[0].s !== 'normal') flagged.push({ a: a, r: list[0] });
+    });
+    var html = '<div class="lab-hero"><h1>My lab reports</h1>' +
+      '<p class="lede">Add a report, check each value beside the page, and keep them all in one place. The report is read here in your browser and is never uploaded. ' +
+      'KYH keeps only the values you confirm, in your <strong>.kyh</strong> file. The PDF itself is not stored, so keep the original safe.</p></div>' +
+      '<div class="note-block lab-add" id="lab-add"><span class="k">Add a report</span>' +
+      '<p style="margin:6px 0 12px;font-size:14px;">A PDF from your lab works best. For a photo or scan, you can see the page and type the values in.</p>' +
+      '<label class="btn" for="lab-file" id="lab-file-btn">Choose a PDF or photo</label>' +
+      '<input type="file" id="lab-file" accept="application/pdf,image/*" style="position:absolute;left:-9999px;" aria-label="Choose a lab report PDF or photo">' +
+      ' <button type="button" class="btn secondary" id="lab-manual">Type values by hand</button>' +
+      '<p id="lab-msg" class="lab-msg" role="status"></p></div>';
+    if (!res.length) {
+      html += '<p class="lede" style="color:var(--muted);">No lab results saved yet.</p>';
+    } else {
+      if (flagged.length) {
+        html += '<div class="note-block lab-flagged" id="lab-flagged"><span class="k">Worth raising with your doctor</span><ul class="lab-flag-list">' +
+          flagged.map(function (f) { return '<li><strong>' + esc(f.a ? f.a.name : f.r.n) + '</strong> ' + esc(f.r.v) + ' ' + esc(f.r.u || '') + ' ' + badge(f.r.s) + ' <span class="lab-when">' + esc(fmtDate(f.r.d)) + '</span></li>'; }).join('') +
+          '</ul><p class="lab-fine">These are the latest values that fall outside the range printed on the report. They are not a diagnosis.</p></div>';
+      }
+      Object.keys(groups).sort().forEach(function (g) {
+        html += '<h2 class="lab-group">' + esc(g) + '</h2><div class="lab-cards">';
+        groups[g].sort(function (x, y) { return (x.a ? x.a.name : x.list[0].n).localeCompare(y.a ? y.a.name : y.list[0].n); }).forEach(function (it) {
+          var r = it.list[0], a = it.a, note = '';
+          if (a) note = (r.s === 'low' ? a.low : r.s === 'high' || r.s === 'borderline' ? a.high : '');
+          html += '<article class="lab-card"><div class="lab-card-top"><strong>' + esc(a ? a.name : r.n) + '</strong>' + badge(r.s) + '</div>' +
+            '<div class="lab-val">' + esc(r.v) + ' <span class="lab-unit">' + esc(r.u || '') + '</span></div>' +
+            '<div class="lab-ref">' + (r.f ? 'Range on report: ' + esc(r.f) + (r.b ? ' (' + esc(r.b) + ')' : '') : 'No range on report') + ' &middot; ' + esc(fmtDate(r.d)) + '</div>' +
+            (it.list.length > 1 ? '<div class="lab-trend">Earlier: ' + it.list.slice(1, 5).map(function (e) { return esc(e.v) + ' (' + esc(fmtDate(e.d)) + ')'; }).join(' &middot; ') + '</div>' : '') +
+            (a ? '<details class="lab-more"><summary>What this is</summary><p>' + esc(a.what) + '</p>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</details>' : '') + '</article>';
+        });
+        html += '</div>';
+      });
+      html += '<h2 class="lab-group">Reports you added</h2><ul class="lab-reports">' +
+        L.reports.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); }).map(function (r) {
+          return '<li><span>' + esc(fmtDate(r.date)) + (r.lab ? ' &middot; ' + esc(r.lab) : '') + ' &middot; ' + (r.n || 0) + ' values</span> <button type="button" class="refine-back" data-del="' + esc(r.id) + '">Remove</button></li>';
+        }).join('') + '</ul>' +
+        '<p class="lab-fine">General information, not medical advice. Ranges are the ones printed on your own report. A doctor reads results with your history.</p>';
+    }
+    main.innerHTML = html;
+    document.getElementById('lab-file').addEventListener('change', onFile);
+    document.getElementById('lab-manual').addEventListener('click', function () { openReview({ rows: [], meta: { date: '', lab: '' }, kind: 'none' }); });
+    main.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () {
+      if (!confirm('Remove this report and its values from KYH?')) return;
+      var id = b.getAttribute('data-del'), L2 = labs();
+      L2.reports = L2.reports.filter(function (r) { return r.id !== id; }); L2.results = L2.results.filter(function (r) { return r.r !== id; });
+      persist(); renderList();
+    }); });
+  }
+
+  /* ================= reading a file ================= */
+  function msg(t) { var m = document.getElementById('lab-msg'); if (m) m.textContent = t || ''; }
+  function onFile(e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    if (/^image\//.test(f.type)) {
+      openReview({ rows: [], meta: { date: '', lab: '' }, kind: 'image', imgUrl: URL.createObjectURL(f) });
+      return;
+    }
+    msg('Reading the report in your browser…');
+    f.arrayBuffer().then(function (buf) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'shared/vendor/pdf.worker.min.js?v=3.11.174';
+      return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    }).then(function (pdf) {
+      var pages = [], p = Promise.resolve();
+      for (var i = 1; i <= pdf.numPages; i++) (function (n) {
+        p = p.then(function () { return pdf.getPage(n); }).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push({ page: n, rows: LabParse.rowsFromItems(tc.items) }); });
+      })(i);
+      return p.then(function () {
+        var out = LabParse.extract(pages, sex);
+        var rows = out.tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; });
+        openReview({ rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length });
+      });
+    }).catch(function (err) {
+      msg('This file could not be opened. If it is password protected, remove the password first, or type the values by hand.');
+      if (window.console) console.error(err);
+    });
+  }
+
+  /* ================= review view ================= */
+  function openReview(r) {
+    cur = r; cur.page = 1; cur.scale = 1.3; cur.active = -1;
+    var d = r.meta.date || '';
+    main.innerHTML = '<div class="lab-hero"><h1>Check the values</h1>' +
+      '<p class="lede">' + (r.kind === 'pdf' ? (r.noText ? 'This PDF has no readable text (it is probably a scan). You can still see each page here and type the values in.' : 'Here is what we found. Tap a row to see it on the page, fix anything that is wrong, and untick what you do not want to keep.') : r.kind === 'image' ? 'Type the values from the photo. Nothing is read automatically from pictures.' : 'Type the values from your report.') + '</p></div>' +
+      '<div class="lab-meta"><label class="intake-label" for="lab-date">Report date (when the sample was taken)</label><input type="date" id="lab-date" value="' + esc(d) + '" max="' + new Date().toISOString().slice(0, 10) + '">' +
+      '<label class="intake-label" for="lab-lab" style="margin-left:14px;">Lab (optional)</label><input type="text" id="lab-lab" maxlength="60" value="' + esc(r.meta.lab || '') + '" placeholder="e.g. your lab’s name"></div>' +
+      '<div class="lab-split">' +
+      '<div class="lab-left"><div id="lab-rows"></div><button type="button" class="btn secondary" id="lab-add-row">+ Add a value I can see on the page</button></div>' +
+      (r.kind === 'none' ? '' : '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><img id="lab-img" alt="Your report page" style="display:none;max-width:100%;"><div id="lab-hl" class="lab-hl" hidden></div></div></div>') +
+      '</div>' +
+      '<datalist id="lab-names">' + (window.LAB_ANALYTES || []).map(function (a) { return '<option value="' + esc(a.name) + '">'; }).join('') + '</datalist>' +
+      '<div class="page-footer-nav"><button type="button" class="btn secondary" id="lab-cancel">Cancel</button><div><span id="lab-save-msg" class="lab-msg"></span> <button type="button" class="btn" id="lab-save">Save these values</button></div></div>';
+    paintRows();
+    if (r.kind === 'pdf') { paintViewerBar(); showPage(1); }
+    if (r.kind === 'image') { var im = document.getElementById('lab-img'); im.src = r.imgUrl; im.style.display = ''; document.getElementById('lab-canvas').style.display = 'none'; }
+    document.getElementById('lab-cancel').addEventListener('click', renderList);
+    document.getElementById('lab-save').addEventListener('click', save);
+    document.getElementById('lab-add-row').addEventListener('click', function () { cur.rows.push({ page: cur.page, box: null, name: '', analyte: '', value: '', unit: '', ref: '', flag: '', status: '', band: '', on: true }); paintRows(); var inp = document.querySelector('#lab-rows .lab-row:last-child input[data-f="name"]'); if (inp) inp.focus(); });
+    window.scrollTo(0, 0);
+  }
+
+  function paintRows() {
+    var host = document.getElementById('lab-rows'), html = '', lastPage = 0;
+    cur.rows.forEach(function (r, i) {
+      if (cur.kind === 'pdf' && r.page && r.page !== lastPage) { html += '<div class="lab-pagehead">Page ' + r.page + '</div>'; lastPage = r.page; }
+      html += '<div class="lab-row' + (r.on ? '' : ' off') + (i === cur.active ? ' active' : '') + '" data-i="' + i + '">' +
+        '<label class="lab-keep"><input type="checkbox" data-f="on"' + (r.on ? ' checked' : '') + ' aria-label="Keep this value"></label>' +
+        '<div class="lab-fields"><input type="text" data-f="name" value="' + esc(r.name) + '" list="lab-names" placeholder="Test name" aria-label="Test name">' +
+        '<div class="lab-nums"><input type="text" data-f="value" value="' + esc(r.value) + '" placeholder="Result" inputmode="decimal" aria-label="Result">' +
+        '<input type="text" data-f="unit" value="' + esc(r.unit) + '" placeholder="Unit" aria-label="Unit">' +
+        '<input type="text" data-f="ref" value="' + esc(r.ref) + '" placeholder="Range on report" aria-label="Range printed on the report"></div></div>' +
+        '<div class="lab-st" data-st>' + badge(r.status) + '</div></div>';
+    });
+    host.innerHTML = html || '<p class="lab-fine">Nothing found yet. Add the values you can see on the page.</p>';
+    host.querySelectorAll('.lab-row').forEach(function (row) {
+      var i = +row.getAttribute('data-i');
+      row.addEventListener('input', function (e) {
+        var f = e.target.getAttribute('data-f'); if (!f) return;
+        var r = cur.rows[i];
+        if (f === 'on') { r.on = e.target.checked; row.classList.toggle('off', !r.on); return; }
+        r[f] = e.target.value;
+        if (f === 'name') { var a = LabParse.matchAnalyte(r.name); r.analyte = a ? a.key : ''; if (a && !r.unit) r.unit = a.unit; }
+        var s = LabParse.statusFor(r.value, r.ref, sex, r.flag); r.status = s.status; r.band = s.band;
+        row.querySelector('[data-st]').innerHTML = badge(r.status);
+      });
+      row.addEventListener('click', function (e) { if (e.target.tagName === 'INPUT') { if (e.target.getAttribute('data-f') !== 'on') focusRow(i, false); return; } focusRow(i, true); });
+    });
+  }
+  function focusRow(i, scroll) {
+    cur.active = i;
+    document.querySelectorAll('#lab-rows .lab-row').forEach(function (r) { r.classList.toggle('active', +r.getAttribute('data-i') === i); });
+    var r = cur.rows[i]; if (cur.kind !== 'pdf' || !r || !r.page) return;
+    if (r.page !== cur.page) showPage(r.page, r.box); else highlight(r.box);
+    if (scroll) { var w = document.getElementById('lab-wrap'); if (w && window.matchMedia('(max-width: 899px)').matches) w.scrollIntoView({ block: 'nearest' }); }
+  }
+
+  /* ---- page preview ---- */
+  function paintViewerBar() {
+    var bar = document.getElementById('lab-viewer-bar');
+    bar.innerHTML = '<button type="button" class="btn secondary" id="lab-prev">&larr;</button><span>Page <strong id="lab-pg">1</strong> of ' + cur.pdf.numPages + '</span><button type="button" class="btn secondary" id="lab-next">&rarr;</button>' +
+      '<button type="button" class="btn secondary" id="lab-zin" aria-label="Zoom in">+</button><button type="button" class="btn secondary" id="lab-zout" aria-label="Zoom out">&minus;</button>';
+    document.getElementById('lab-prev').addEventListener('click', function () { showPage(cur.page - 1); });
+    document.getElementById('lab-next').addEventListener('click', function () { showPage(cur.page + 1); });
+    document.getElementById('lab-zin').addEventListener('click', function () { cur.scale = Math.min(3, cur.scale + 0.25); showPage(cur.page, cur.hlBox); });
+    document.getElementById('lab-zout').addEventListener('click', function () { cur.scale = Math.max(0.6, cur.scale - 0.25); showPage(cur.page, cur.hlBox); });
+  }
+  function showPage(n, box) {
+    if (!cur.pdf || n < 1 || n > cur.pdf.numPages) return;
+    cur.page = n; document.getElementById('lab-pg').textContent = n;
+    cur.pdf.getPage(n).then(function (pg) {
+      var dpr = window.devicePixelRatio || 1, vp = pg.getViewport({ scale: cur.scale });
+      var cv = document.getElementById('lab-canvas'); cv.width = Math.floor(vp.width * dpr); cv.height = Math.floor(vp.height * dpr);
+      cv.style.width = vp.width + 'px'; cv.style.height = vp.height + 'px';
+      cur.vp = vp;
+      return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null }).promise;
+    }).then(function () { highlight(box || null); });
+  }
+  function highlight(box) {
+    var hl = document.getElementById('lab-hl'); cur.hlBox = box;
+    if (!hl) return;
+    if (!box || !cur.vp) { hl.hidden = true; return; }
+    var r = cur.vp.convertToViewportRectangle([box.x1 - 3, box.y1 - 2, box.x2 + 3, box.y2 + 2]);
+    var x = Math.min(r[0], r[2]), y = Math.min(r[1], r[3]), w = Math.abs(r[2] - r[0]), h = Math.abs(r[3] - r[1]);
+    hl.style.left = x + 'px'; hl.style.top = y + 'px'; hl.style.width = w + 'px'; hl.style.height = h + 'px'; hl.hidden = false;
+  }
+
+  /* ---- save ---- */
+  function save() {
+    var date = document.getElementById('lab-date').value, labName = document.getElementById('lab-lab').value.trim().slice(0, 60);
+    var keep = cur.rows.filter(function (r) { return r.on && r.name.trim() && String(r.value).trim(); });
+    var sm = document.getElementById('lab-save-msg');
+    if (!keep.length) { sm.textContent = 'Nothing to save yet. Add at least one value with a name and result.'; return; }
+    if (!date) { sm.textContent = 'Add the report date first. It lets KYH show how your values change over time.'; document.getElementById('lab-date').focus(); return; }
+    var L = labs();
+    if (L.results.length + keep.length > MAX_RESULTS) { sm.textContent = 'That is more values than KYH can keep in one file. Remove an older report first.'; return; }
+    var id = uid();
+    keep.forEach(function (r) {
+      var key = r.analyte || '', nm = r.name.trim().slice(0, 80);
+      // the same test on the same date replaces the earlier copy
+      L.results = L.results.filter(function (x) { return !(x.d === date && (key ? x.k === key : x.n === nm)); });
+      L.results.push({ r: id, k: key, n: nm, v: String(r.value).trim().slice(0, 30), u: String(r.unit || '').trim().slice(0, 30), f: String(r.ref || '').trim().slice(0, 120), s: r.status || '', b: r.band || '', d: date });
+    });
+    L.reports.push({ id: id, date: date, lab: labName, n: keep.length });
+    persist();
+    renderList();
+    msg('Saved ' + keep.length + ' value' + (keep.length > 1 ? 's' : '') + '. Remember to save your .kyh file to keep them.');
+  }
+
+  renderList();
+})();

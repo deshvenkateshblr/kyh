@@ -97,3 +97,6 @@ index → profile (sex + age) → diagnostics (starter list) → routine (+ exer
 - Home promises match the product (a minute for a starter list, about ten for the full picture; routine is a two-tap estimate with optional hour-by-hour). Steps named Profile / Tests / Routine / Diet / Summary.
 - Tests: no "continue anyway" confirm step. Summary opens the Doctor Brief by default; finish = Save, Share KYH, Print doctor brief (no Done to home). Next steps ends at the Doctor Brief. AI prompt copy says three prompts plus all together.
 - routine-plan, routine-config and diet-synthesis were already merged into routine.html and diet.html (redirect shells); each section already has a skip.
+
+## v3.1 — My lab reports (labs.html)
+Keep lab results in one place. Add a PDF (read in the browser with a vendored pdf.js, never uploaded), check each extracted value beside the page preview, and keep only confirmed values in the .kyh file. Status uses the range printed on the report; generic plain-language notes per test. Text PDFs only; scans and photos show the page for manual entry. Not a diagnosis.

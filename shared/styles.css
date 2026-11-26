@@ -1628,3 +1628,48 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .radio-pair { flex-wrap: wrap; }
 .refine-back { background:none; border:0; padding:6px 2px; cursor:pointer; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; }
 .fq-title { margin-bottom:6px; }
+
+/* ---- My lab reports (labs.html) ---- */
+.lab-hero h1 { margin-bottom: 6px; }
+.lab-msg { font: 12px var(--mono); color: var(--muted); margin: 10px 0 0; min-height: 1em; }
+.lab-add { margin-bottom: 24px; }
+.lab-flagged { margin-bottom: 20px; }
+.lab-flag-list { margin: 8px 0 6px; padding-left: 18px; line-height: 1.7; font-size: 14px; }
+.lab-fine { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
+.lab-when { font: 11px var(--mono); color: var(--muted); }
+.lab-group { font-size: 15px; margin: 26px 0 10px; }
+.lab-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.lab-card { border: 1px solid var(--line); background: var(--panel); padding: 12px 14px; }
+.lab-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.lab-val { font-size: 22px; font-weight: 600; margin: 6px 0 2px; }
+.lab-unit { font-size: 12px; font-weight: 400; color: var(--muted); }
+.lab-ref, .lab-trend { font: 11.5px var(--mono); color: var(--muted); line-height: 1.5; }
+.lab-more { margin-top: 8px; font-size: 13px; }
+.lab-more summary { cursor: pointer; font: 11.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--teal); }
+.lab-more p { margin: 6px 0 0; line-height: 1.5; color: var(--ink-soft); }
+.lab-reports { list-style: none; padding: 0; margin: 0; font-size: 13.5px; }
+.lab-reports li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.lab-badge { font: 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.lab-badge.lab-normal { color: var(--teal); border-color: var(--teal); }
+.lab-badge.lab-borderline { color: #8a5a12; border-color: #d9a441; background: #fbf1dc; }
+.lab-badge.lab-low, .lab-badge.lab-high, .lab-badge.lab-abnormal { color: #9a3a28; border-color: #d98a7a; background: #fbe9e4; }
+/* review screen */
+.lab-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 6px 0 16px; }
+.lab-meta input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); max-width: 100%; }
+.lab-split { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.lab-right { order: -1; }
+@media (min-width: 900px) { .lab-split { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; } .lab-right { order: 0; position: sticky; top: 12px; } }
+.lab-viewer-bar { display: flex; align-items: center; gap: 8px; padding: 6px 0; font: 12px var(--mono); flex-wrap: wrap; }
+.lab-viewer-bar .btn { padding: 6px 12px; }
+.lab-canvas-wrap { position: relative; overflow: auto; max-height: 70vh; border: 1px solid var(--line); background: #5b6560; padding: 8px; }
+.lab-canvas-wrap canvas { display: block; background: #fff; max-width: none; }
+.lab-hl { position: absolute; border: 2px solid #e0903a; background: rgba(240, 170, 60, .22); pointer-events: none; margin: 8px 0 0 8px; }
+.lab-pagehead { font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+.lab-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: start; padding: 8px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 6px; cursor: pointer; }
+.lab-row.active { border-color: var(--teal); box-shadow: inset 3px 0 0 var(--teal); }
+.lab-row.off { opacity: .5; }
+.lab-fields input { font: inherit; font-size: 13.5px; padding: 6px 8px; border: 1px solid var(--line); background: #fff; width: 100%; box-sizing: border-box; min-width: 0; }
+.lab-nums { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 6px; margin-top: 6px; }
+.lab-keep { padding-top: 6px; }
+.lab-st { padding-top: 4px; }
+#lab-add-row { margin: 10px 0 0; }

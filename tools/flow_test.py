@@ -471,7 +471,7 @@ def phone_fit(browser, base):
     prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': ['Fatigue'], 'smoking': 'Never', 'dietType': 'Vegetarian'}
     state = {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'mode': 'simple', 'dayType': 'sit', 'exerciseDays': 'none', 'estimatedCalories': 2200, 'activities': [], 'activitiesConfirmed': True}}
     bad = []
-    for pg in ('index.html', 'profile.html', 'diagnostics.html', 'symptoms.html', 'routine.html', 'diet.html', 'diet-synthesis.html', 'summary.html', 'nextsteps.html', 'routine-plan.html', 'routine-config.html'):
+    for pg in ('index.html', 'profile.html', 'diagnostics.html', 'symptoms.html', 'routine.html', 'diet.html', 'diet-synthesis.html', 'summary.html', 'nextsteps.html', 'routine-plan.html', 'routine-config.html', 'labs.html'):
         inject(page, base, state, pg)
         page.wait_for_timeout(500)
         page.evaluate("""() => { const all = [...document.querySelectorAll('body *')]; const f0 = all.map(e => parseFloat(getComputedStyle(e).fontSize)); all.forEach((e, i) => { if (f0[i]) e.style.setProperty('font-size', (f0[i] * 1.5) + 'px', 'important'); }); }""")
@@ -516,6 +516,49 @@ def honest_flow(browser, base):
     inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'nextsteps.html')
     page.wait_for_timeout(500)
     check('open my doctor brief' in page.inner_text('main').lower() and page.locator('.page-footer-nav a[href="index.html"]').count() == 0, 'next steps: finish leads to the Doctor Brief, not home')
+    page.close()
+
+
+def labs_module(browser, base):
+    print('\nLab reports module')
+    import json as _j, os as _o
+    page = browser.new_page(viewport={'width': 1200, 'height': 900})
+    errs = []
+    page.on('pageerror', lambda e: errs.append(str(e)))
+    page.on('dialog', lambda d: d.accept())
+    state = {'profile': {'age': 45, 'sex': 'Male'}, 'vitals': {}, 'diagnostics': {}, 'routine': {}}
+    fx = _o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'fixtures', 'labs')
+    def load(name):
+        inject(page, base, state, 'labs.html')
+        page.wait_for_selector('#lab-file', state='attached')
+        page.set_input_files('#lab-file', _o.path.join(fx, name))
+        page.wait_for_selector('#lab-save', timeout=20000)
+        page.wait_for_timeout(600)
+    def rows():
+        return page.evaluate("() => [...document.querySelectorAll('#lab-rows .lab-row')].map(r => [...r.querySelectorAll('input[data-f]')].map(i => i.value).join('|'))")
+    load('style_a_table.pdf'); ra = rows()
+    check(len(ra) >= 12, 'style A: rows extracted', str(len(ra)))
+    check(page.input_value('#lab-date') == '2026-03-12', 'style A: date read')
+    check(any('|HbA1c|' in r for r in ra), 'style A: HbA1c present')
+    load('style_b_flags.pdf'); rb = rows()
+    check(len(rb) >= 6, 'style B: rows extracted', str(len(rb)))
+    load('style_c_plain.pdf'); rc = rows()
+    check(len(rc) >= 6 and page.input_value('#lab-date') == '2026-03-05', 'style C: rows from both pages and date', str(len(rc)))
+    load('style_d_scan.pdf')
+    check(len(rows()) == 0 and 'no readable text' in page.inner_text('.lab-hero, main'), 'style D: scan says no readable text')
+    load('style_a_table.pdf')
+    page.click('#lab-rows .lab-row >> nth=2'); page.wait_for_timeout(400)
+    check(page.evaluate("() => { const h = document.getElementById('lab-hl'); return !!h && h.offsetWidth > 0; }"), 'row click highlights the page')
+    page.fill('#lab-rows .lab-row >> nth=0 >> input[data-f=value]', '14.0')
+    check('range' in page.inner_text('#lab-rows .lab-row >> nth=0 >> [data-st]').lower(), 'editing a value recomputes status')
+    page.click('#lab-save'); page.wait_for_timeout(500)
+    st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
+    check(len(st['labs']['reports']) == 1 and len(st['labs']['results']) >= 12, 'save writes state.labs')
+    check('worth raising' in page.inner_text('main').lower(), 'flagged list shown')
+    page.click('[data-del] >> nth=0'); page.wait_for_timeout(400)
+    st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
+    check(len((st.get('labs') or {}).get('results', [])) == 0, 'remove report clears its values')
+    check(not errs, 'no script errors on labs page', str(errs[:2]))
     page.close()
 
 
@@ -898,6 +941,10 @@ def main():
             honest_flow(browser, base)
         except Exception as e:
             check(False, 'honest flow checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
+        try:
+            labs_module(browser, base)
+        except Exception as e:
+            check(False, 'lab module checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             quick_day(browser, base)
         except Exception as e:

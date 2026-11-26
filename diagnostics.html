@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <title>Tests matched to you — KYH</title>
-<link rel="stylesheet" href="shared/styles.css?v=20261125-caca618">
+<link rel="stylesheet" href="shared/styles.css?v=20261126-1315f37">
 <style>
 .refine-panel .refine-step { border-top:1px solid var(--line); padding:16px 0 4px; margin-top:16px; }
 .refine-panel .refine-step:first-child { border-top:0; margin-top:0; padding-top:0; }
@@ -17,7 +17,7 @@
 </style>
 <!-- share:start -->
 <meta name="robots" content="noindex, follow">
-<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261125-caca618">
+<link rel="icon" href="shared/assets/kyh_logo_final.png?v=20261126-1315f37">
 <meta name="theme-color" content="#1f7a6d">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_IN">
@@ -25,7 +25,7 @@
 <meta property="og:title" content="Tests matched to you — KYH">
 <meta property="og:description" content="See the lab tests most relevant to your age, sex and symptoms, note when you last had each one, and take the list to your doctor.">
 <meta property="og:url" content="https://vividnova.com/kyh/diagnostics.html">
-<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261125-caca618">
+<meta property="og:image" content="https://vividnova.com/kyh/shared/assets/og-image.png?v=20261126-1315f37">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="KYH — Know Your Health">
@@ -43,10 +43,10 @@
 
 <footer id="app-footer"></footer>
 
-<script src="shared/data.diagnostics.js?v=20261125-caca618"></script>
-<script src="shared/utils.js?v=20261125-caca618"></script>
-<script src="shared/data.symptoms.js?v=20261125-caca618"></script>
-<script src="shared/vault.js?v=20261125-caca618"></script>
+<script src="shared/data.diagnostics.js?v=20261126-1315f37"></script>
+<script src="shared/utils.js?v=20261126-1315f37"></script>
+<script src="shared/data.symptoms.js?v=20261126-1315f37"></script>
+<script src="shared/vault.js?v=20261126-1315f37"></script>
 <script>
 const state = loadState();
 renderHeader('diagnostics', 'KYH-Diagnostics');
@@ -473,6 +473,7 @@ function renderResultsStage(){
     <button type="button" class="btn" id="tp-next">Next 2 &rarr;</button>
     <button class="btn" id="continue-btn" style="display:none;">Continue to Routine &rarr;</button>
   </div>
+  <p class="tp-skip"><a href="labs.html" id="tp-labs">Already have lab reports? Keep them in one place &rarr;</a></p>
   <p class="tp-skip"><a href="#" id="tp-skip">Skip the rest and go to Routine &rarr;</a></p>
   `;
 
@@ -837,8 +838,8 @@ if(!profile){
   renderRefinePanel();
 }
 </script>
-<script src="shared/data.facts.js?v=20261125-caca618"></script>
-<script src="shared/facts.js?v=20261125-caca618"></script>
-<script src="shared/statusbar.js?v=20261125-caca618"></script>
+<script src="shared/data.facts.js?v=20261126-1315f37"></script>
+<script src="shared/facts.js?v=20261126-1315f37"></script>
+<script src="shared/statusbar.js?v=20261126-1315f37"></script>
 </body>
 </html>
