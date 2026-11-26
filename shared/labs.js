@@ -216,6 +216,9 @@
       '<p id="lab-save-msg" class="lab-msg" role="status"></p></div>' +
       '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><div id="lab-bands"></div></div></div></div>';
     paintGuess(); paintPages(); paintViewerBar();
+    var vb = document.getElementById('lab-viewer-bar');
+    vb.insertAdjacentHTML('beforeend', ' <button type="button" class="btn secondary" id="lab-mark-sum">This page is a summary</button>');
+    document.getElementById('lab-mark-sum').addEventListener('click', function () { setKind(cur.page, 'text'); document.getElementById('lab-msg-sum') && 0; var m = document.getElementById('lab-save-msg'); m.textContent = 'Page ' + cur.page + ' marked as a summary and skipped. Change it in the page list if that was a mistake.'; });
     showPage(cur.sel[0] || 1);
     document.getElementById('lab-cancel').addEventListener('click', renderList);
     document.getElementById('lab-go').addEventListener('click', function () { cur.mode = 'review'; openReview(cur); });
@@ -227,6 +230,18 @@
       reread(); drawBands();
     });
     window.scrollTo(0, 0);
+  }
+  /* the person says what a page is: results table, summary/cover (skipped) or written report */
+  function setKind(n, kind) {
+    var c = (cur.cls || []).filter(function (x) { return x.page === n; })[0]; if (!c) return;
+    c.kind = kind; c.user = true;
+    var at = cur.sel.indexOf(n);
+    if (kind === 'results') { if (at < 0) cur.sel.push(n); } else if (at >= 0) cur.sel.splice(at, 1);
+    if (kind === 'findings' && !c.topics.length) c.topics = ['Written report'];
+    if (kind !== 'findings' && c.topics.length === 1 && c.topics[0] === 'Written report') c.topics = [];
+    var manual = cur.rows.filter(function (r) { return !r.box; });
+    cur.rows = toRows(LabParse.extract(cur.pages, sex, cur.sel, cur.cols).tests).concat(manual);
+    paintPages(); paintGuess(); drawBands();
   }
   function saveNote() {
     var d = document.getElementById('lab-note-date').value, m = document.getElementById('lab-save-msg');
@@ -253,7 +268,10 @@
       '<li><strong>Each result row reads:</strong> ' + (cn.length ? esc(cn.join('  →  ')) : 'we could not find the columns, tap them below') + (cur.how === 'header' ? ' <span class="lab-when">(from the column headings)</span>' : cur.how === 'numbers' ? ' <span class="lab-when">(from where the numbers sit)</span>' : cur.how === 'you' ? ' <span class="lab-when">(as you set it)</span>' : '') + '</li>' +
       '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + (cur.rows.length ? ' (' + esc(foundByTopic()) + ')' : '') + '</li>' +
       '<li><strong>What each page is:</strong><ul class="lab-pagelist">' + (cur.cls || []).map(function (c) {
-        return '<li>Page ' + c.page + ': ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + '</li>'; }).join('') + '</ul></li>';
+        return '<li><button type="button" class="refine-back" data-showpg="' + c.page + '">Page ' + c.page + '</button>: ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + (c.user ? ' <span class="lab-when">(you set this)</span>' : '') +
+          '<select class="lab-kind" data-kind="' + c.page + '" aria-label="What is page ' + c.page + '"><option value="results"' + (c.kind === 'results' ? ' selected' : '') + '>Results table</option><option value="text"' + (c.kind === 'text' ? ' selected' : '') + '>Summary or cover, skip it</option><option value="findings"' + (c.kind === 'findings' ? ' selected' : '') + '>Written report</option></select></li>'; }).join('') + '</ul></li>';
+    g.querySelectorAll('[data-kind]').forEach(function (sel) { sel.addEventListener('change', function () { setKind(+sel.getAttribute('data-kind'), sel.value); }); });
+    g.querySelectorAll('[data-showpg]').forEach(function (b) { b.addEventListener('click', function () { showPage(+b.getAttribute('data-showpg')); }); });
     var fnd = (cur.cls || []).filter(function (c) { return c.kind === 'findings'; });
     var nb = document.getElementById('lab-notebox');
     if (nb) nb.innerHTML = fnd.length ? '<div class="lab-pages-t">Written report found</div><p class="lab-fine">' + esc(fnd.map(function (c) { return 'Page ' + c.page + ' looks like ' + c.topics[0]; }).join('; ')) + '. These carry no numbers to read. You can keep the report and its file under that name.</p>' +
@@ -316,6 +334,7 @@
     host.querySelectorAll('[data-pg]').forEach(function (b) { b.addEventListener('click', function () {
       var n = +b.getAttribute('data-pg'), at = cur.sel.indexOf(n);
       if (at >= 0) cur.sel.splice(at, 1); else cur.sel.push(n);
+      (cur.cls || []).forEach(function (c) { if (c.page === n) { c.user = true; c.kind = cur.sel.indexOf(n) >= 0 ? 'results' : (c.kind === 'findings' ? 'findings' : 'text'); } });
       var manual = cur.rows.filter(function (r) { return !r.box; });
       var out = LabParse.extract(cur.pages, sex, cur.sel, cur.cols);
       cur.rows = toRows(out.tests).concat(manual);
