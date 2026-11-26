@@ -16,8 +16,22 @@ def header(c, lab, y=H - 50):
     c.drawString(40, y - 40, 'Referred by : Dr Sample      Address : 12 Example Road, Nowhere 560001')
 
 # ---- A: four columns, section titles, sex-specific refs on wrapped lines, banded refs, comments ----
-def style_a(path):
+def summary_pages(c, n=3):
+    texts = [
+        'Doctor Summary', 'Overall your results are mostly in the expected range. A few values deserve attention.',
+        'Your HbA1c of 5.9 percent is a little above 5.7, which is the usual upper limit for most adults.',
+        'LDL cholesterol was 142 against a goal below 100. Triglycerides were 180. Please repeat after 8 weeks.',
+        'Walk 30 minutes a day, 5 days a week, and reduce sugar. Vitamin D 18.2 is low; sunlight 20 minutes helps.',
+        'Call us on 1800 000 0000 between 8 and 6 for any questions about this report.']
+    for i in range(n):
+        c.setFont('Helvetica-Bold', 14); c.drawString(40, H - 60, 'Health Report - Summary page %d' % (i + 1))
+        c.setFont('Helvetica', 10)
+        for j, t in enumerate(texts): c.drawString(40, H - 100 - j * 22, t)
+        c.showPage()
+
+def style_a(path, lead=0):
     c = canvas.Canvas(path, pagesize=A4)
+    if lead: summary_pages(c, lead)
     header(c, 'Sample Diagnostics (Tata 1mg style)')
     y = H - 120
     def head(y):
@@ -103,6 +117,7 @@ def style_d(path):
     c = canvas.Canvas(path, pagesize=A4); c.drawImage(ImageReader(im), 40, H - 460, width=500, height=333); c.save()
 
 style_a(os.path.join(OUT, 'style_a_table.pdf'))
+style_a(os.path.join(OUT, 'style_e_summary_first.pdf'), lead=3)
 style_b(os.path.join(OUT, 'style_b_flags.pdf'))
 style_c(os.path.join(OUT, 'style_c_plain.pdf'))
 style_d(os.path.join(OUT, 'style_d_scan.pdf'))

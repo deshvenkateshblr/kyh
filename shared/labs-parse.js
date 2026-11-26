@@ -177,7 +177,29 @@
   function fmt(y, mo, d) { if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1990 || y > 2100) return ''; return y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2); }
 
   /* ---- main: pages = [{ page, rows }] ---- */
-  function extract(pages, sex) {
+  /* How much a page looks like a table of results: rows that hold a number AND (a unit OR a range). Independent of any lab's layout. */
+  var UNIT_CELL = /^(mg\/d?l|g\/d?l|gm\/d?l|gm%|ng\/m?l|pg\/m?l|ug\/d?l|\u00b5g\/d?l|mcg\/d?l|u?iu\/m?l|miu\/l|mu\/l|u\/l|iu\/l|mmol\/l|meq\/l|mm\/hr|mm\/h|fl|pg|%|thou\/cumm|lakh\/cumm|million\/cumm|mill\/cumm|10\^?[0-9]+\/\w+|\/cumm|\/ul|\/hpf|cells\/\w+|sec|seconds|ratio|mg\/l|ml\/min.*|mosm\/kg)$/i;
+  var RANGE_IN = /\d\s*(-|\u2013|to)\s*\d|[<>]=?\s*\d|up to\s*\d/i;
+  function pageScore(rows) {
+    var n = 0;
+    rows.forEach(function (r) {
+      var hasNum = false, hasUnitOrRange = false;
+      r.cells.forEach(function (c) {
+        var t = c.text.trim();
+        if (/^[<>]?\s*\d[\d,]*\.?\d*$/.test(t)) hasNum = true;
+        if (UNIT_CELL.test(t) || (RANGE_IN.test(t) && t.length < 60)) hasUnitOrRange = true;
+      });
+      if (hasNum && hasUnitOrRange) n++;
+    });
+    return n;
+  }
+  function pickPages(pages) {
+    var sc = pages.map(function (p) { return pageScore(p.rows); }), sel = [];
+    pages.forEach(function (p, i) { if (sc[i] >= 1) sel.push(p.page); });
+    if (!sel.length) pages.forEach(function (p) { sel.push(p.page); });
+    return { scores: sc, sel: sel };
+  }
+  function extract(pages, sex, only) {
     var meta = { date: '', lab: '' }, tests = [], cols = null, cat = '', last = null;
     pages.forEach(function (pg) {
       var rows = pg.rows;
@@ -186,6 +208,7 @@
         if (!meta.date && /(collect|sample|drawn|registered|reported|received|date)/i.test(line)) { var d = isoDate(line); if (d) meta.date = d; }
         if (!meta.lab) LABS.forEach(function (n) { if (!meta.lab && line.toLowerCase().indexOf(n.toLowerCase()) >= 0) meta.lab = n.replace('Dr. ', 'Dr '); });
       });
+      if (only && only.indexOf(pg.page) < 0) return;
       rows.forEach(function (r, ri) {
         var hc = headerCols(r);
         if (hc) { cols = hc; return; }
@@ -219,6 +242,6 @@
     return { meta: meta, tests: tests };
   }
 
-  root.LabParse = { rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
+  root.LabParse = { pageScore: pageScore, pickPages: pickPages, rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.LabParse;
 })(typeof window !== 'undefined' ? window : globalThis);

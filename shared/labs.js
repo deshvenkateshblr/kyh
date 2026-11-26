@@ -175,9 +175,9 @@
         p = p.then(function () { return pdf.getPage(n); }).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push({ page: n, rows: LabParse.rowsFromItems(tc.items) }); });
       })(i);
       return p.then(function () {
-        var out = LabParse.extract(pages, sex);
+        var pk = LabParse.pickPages(pages), out = LabParse.extract(pages, sex, pk.sel);
         var rows = out.tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; });
-        openReview({ rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep });
+        openReview({ rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores });
       });
     }).catch(function (err) {
       msg('This file could not be opened. If it is password protected, remove the password first, or type the values by hand.');
@@ -187,25 +187,55 @@
 
   /* ================= review view ================= */
   function openReview(r) {
-    cur = r; cur.page = 1; cur.scale = 1.3; cur.active = -1;
+    cur = r; cur.page = 1; cur.scale = 1; cur.active = -1;
     var d = r.meta.date || '';
     main.innerHTML = '<div class="lab-hero"><h1>Check the values</h1>' +
       '<p class="lede">' + (r.kind === 'pdf' ? (r.noText ? 'This PDF has no readable text (it is probably a scan). You can still see each page here and type the values in.' : 'Here is what we found. Tap a row to see it on the page, fix anything that is wrong, and untick what you do not want to keep.') : r.kind === 'image' ? 'Type the values from the photo. Nothing is read automatically from pictures.' : 'Type the values from your report.') + '</p></div>' +
       '<div class="lab-meta"><label class="intake-label" for="lab-date">Report date (when the sample was taken)</label><input type="date" id="lab-date" value="' + esc(d) + '" max="' + new Date().toISOString().slice(0, 10) + '">' +
       '<label class="intake-label" for="lab-lab" style="margin-left:14px;">Lab (optional)</label><input type="text" id="lab-lab" maxlength="60" value="' + esc(r.meta.lab || '') + '" placeholder="e.g. your lab’s name"></div>' +
       '<div class="lab-split">' +
-      '<div class="lab-left"><div id="lab-rows"></div><button type="button" class="btn secondary" id="lab-add-row">+ Add a value I can see on the page</button></div>' +
+      '<div class="lab-left">' + (r.pages && r.pages.length > 1 ? '<div class="lab-pages" id="lab-pages"></div>' : '') + '<div id="lab-rows"></div><button type="button" class="btn secondary" id="lab-add-row">+ Add a value I can see on the page</button></div>' +
       (r.kind === 'none' ? '' : '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><img id="lab-img" alt="Your report page" style="display:none;max-width:100%;"><div id="lab-hl" class="lab-hl" hidden></div></div></div>') +
       '</div>' +
       '<datalist id="lab-names">' + (window.LAB_ANALYTES || []).map(function (a) { return '<option value="' + esc(a.name) + '">'; }).join('') + '</datalist>' +
       '<div class="page-footer-nav"><button type="button" class="btn secondary" id="lab-cancel">Cancel</button><div><span id="lab-save-msg" class="lab-msg"></span> <button type="button" class="btn" id="lab-save">Save these values</button></div></div>';
+    paintPages();
     paintRows();
-    if (r.kind === 'pdf') { paintViewerBar(); showPage(1); }
+    if (r.kind === 'pdf') { paintViewerBar(); showPage(r.sel && r.sel.length ? r.sel[0] : 1); }
     if (r.kind === 'image') { var im = document.getElementById('lab-img'); im.src = r.imgUrl; im.style.display = ''; document.getElementById('lab-canvas').style.display = 'none'; }
     document.getElementById('lab-cancel').addEventListener('click', renderList);
     document.getElementById('lab-save').addEventListener('click', save);
     document.getElementById('lab-add-row').addEventListener('click', function () { cur.rows.push({ page: cur.page, box: null, name: '', analyte: '', value: '', unit: '', ref: '', flag: '', status: '', band: '', on: true }); paintRows(); var inp = document.querySelector('#lab-rows .lab-row:last-child input[data-f="name"]'); if (inp) inp.focus(); });
     window.scrollTo(0, 0);
+  }
+
+  function paintPages() {
+    var host = document.getElementById('lab-pages'); if (!host || !cur.pages) return;
+    host.innerHTML = '<div class="lab-pages-t">Pages we read <span class="lab-when">(tap a number to include or skip it)</span></div><div class="lab-chips">' +
+      cur.pages.map(function (p, i) { var on = cur.sel.indexOf(p.page) >= 0; return '<button type="button" class="lab-chip' + (on ? ' on' : '') + '" data-pg="' + p.page + '" aria-pressed="' + on + '" title="' + cur.scores[i] + ' lines look like results">' + p.page + (on ? ' &#10003;' : '') + '</button>'; }).join('') + '</div>' +
+      '<p class="lab-fine">Pages with units and printed ranges are ticked. Summary and cover pages are skipped. Changing pages re-reads the list and keeps rows you typed in.</p>';
+    host.querySelectorAll('[data-pg]').forEach(function (b) { b.addEventListener('click', function () {
+      var n = +b.getAttribute('data-pg'), at = cur.sel.indexOf(n);
+      if (at >= 0) cur.sel.splice(at, 1); else cur.sel.push(n);
+      var manual = cur.rows.filter(function (r) { return !r.box; });
+      var out = LabParse.extract(cur.pages, sex, cur.sel);
+      cur.rows = out.tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }).concat(manual);
+      cur.active = -1; paintPages(); paintRows(); showPage(n);
+    }); });
+  }
+  /* what the parser sees on the current page, with name-like and id-like lines masked, so a layout can be shared for troubleshooting */
+  function layoutDump() {
+    var pg = cur.pages && cur.pages.filter(function (p) { return p.page === cur.page; })[0]; if (!pg) return '';
+    return 'KYH layout, page ' + cur.page + '\n' + pg.rows.map(function (r) {
+      var line = r.cells.map(function (c) { return c.text; }).join(' ');
+      if (/(name|patient|customer|mobile|phone|address|e-?mail|\bdob\b|referred|lab visit|barcode|\bid\b|uhid|pin ?code|www\.|@)/i.test(line)) return 'y=' + Math.round(r.y) + ' [line removed]';
+      return 'y=' + Math.round(r.y) + ' ' + r.cells.map(function (c) { return Math.round(c.x) + ':' + c.text.replace(/\d{7,}/g, '#'); }).join(' | ');
+    }).join('\n');
+  }
+  function copyLayout() {
+    var t = layoutDump(), host = document.getElementById('lab-dump');
+    var show = function () { host.hidden = false; host.value = t; host.focus(); host.select(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { host.hidden = false; host.value = t; document.getElementById('lab-dump-msg').textContent = 'Copied. Name and ID lines are removed, but read it before sharing.'; }, show); else show();
   }
 
   function paintRows() {
@@ -247,7 +277,9 @@
   function paintViewerBar() {
     var bar = document.getElementById('lab-viewer-bar');
     bar.innerHTML = '<button type="button" class="btn secondary" id="lab-prev">&larr;</button><span>Page <strong id="lab-pg">1</strong> of ' + cur.pdf.numPages + '</span><button type="button" class="btn secondary" id="lab-next">&rarr;</button>' +
-      '<button type="button" class="btn secondary" id="lab-zin" aria-label="Zoom in">+</button><button type="button" class="btn secondary" id="lab-zout" aria-label="Zoom out">&minus;</button>';
+      '<button type="button" class="btn secondary" id="lab-zin" aria-label="Zoom in">+</button><button type="button" class="btn secondary" id="lab-zout" aria-label="Zoom out">&minus;</button>' +
+      '<button type="button" class="refine-back" id="lab-dumpbtn">Copy page layout</button><span id="lab-dump-msg" class="lab-when"></span><textarea id="lab-dump" class="lab-dump" readonly hidden aria-label="Page layout text"></textarea>';
+    document.getElementById('lab-dumpbtn').addEventListener('click', copyLayout);
     document.getElementById('lab-prev').addEventListener('click', function () { showPage(cur.page - 1); });
     document.getElementById('lab-next').addEventListener('click', function () { showPage(cur.page + 1); });
     document.getElementById('lab-zin').addEventListener('click', function () { cur.scale = Math.min(3, cur.scale + 0.25); showPage(cur.page, cur.hlBox); });
@@ -257,7 +289,7 @@
     if (!cur.pdf || n < 1 || n > cur.pdf.numPages) return;
     cur.page = n; document.getElementById('lab-pg').textContent = n;
     cur.pdf.getPage(n).then(function (pg) {
-      var dpr = window.devicePixelRatio || 1, vp = pg.getViewport({ scale: cur.scale });
+      var dpr = window.devicePixelRatio || 1, wrap = document.getElementById('lab-wrap'), w1 = pg.getViewport({ scale: 1 }).width, fit = Math.max(0.5, Math.min(3, ((wrap ? wrap.clientWidth : 600) - 18) / w1)), vp = pg.getViewport({ scale: fit * cur.scale });
       var cv = document.getElementById('lab-canvas'); cv.width = Math.floor(vp.width * dpr); cv.height = Math.floor(vp.height * dpr);
       cv.style.width = vp.width + 'px'; cv.style.height = vp.height + 'px';
       cur.vp = vp;

@@ -558,6 +558,15 @@ def labs_module(browser, base):
     page.click('[data-del] >> nth=0'); page.wait_for_timeout(400)
     st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
     check(len((st.get('labs') or {}).get('results', [])) == 0, 'remove report clears its values')
+    load('style_e_summary_first.pdf')
+    chips = page.evaluate("() => [...document.querySelectorAll('.lab-chip')].map(c => c.classList.contains('on'))")
+    check(chips == [False, False, False, True, True], 'summary pages are skipped and result pages ticked', str(chips))
+    check(len(rows()) >= 12 and page.input_value('#lab-date') == '2026-03-12', 'summary-first report: results and date still found', str(len(rows())))
+    page.click('[data-pg="1"]'); page.wait_for_timeout(400)
+    n_on = len(rows()); page.click('[data-pg="1"]'); page.wait_for_timeout(400)
+    check(n_on > len(rows()), 'page chips re-read the list')
+    page.click('#lab-dumpbtn'); page.wait_for_timeout(300)
+    check(page.evaluate("() => document.getElementById('lab-dump').value").startswith('KYH layout'), 'layout dump available')
     # binder: two reports, filter by date and test, .kylt round trip
     import zipfile as _z
     ctx = browser.new_context(viewport={'width': 1200, 'height': 900}, accept_downloads=True)
