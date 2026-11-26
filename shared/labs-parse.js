@@ -11,17 +11,78 @@
 
   function norm(s) { return String(s || '').toLowerCase().replace(/[()\[\]:,.*]/g, ' ').replace(/[^a-z0-9%+ ]/g, ' ').replace(/\s+/g, ' ').trim(); }
 
+  /* ---- matching a printed test name to the tests we know ---- */
+  var IDX = null;
+  function index() {
+    if (IDX && IDX.n === ANALYTES.length) return IDX;
+    IDX = { n: ANALYTES.length, exact: {}, multi: [] };
+    ANALYTES.forEach(function (a) { a.alias.forEach(function (al) {
+      var n = norm(al); if (!IDX.exact[n]) IDX.exact[n] = a;
+      var t = n.split(' '); if (t.length >= 2) IDX.multi.push({ a: a, t: t });
+    }); });
+    IDX.multi.sort(function (x, y) { return y.t.length - x.t.length; });
+    return IDX;
+  }
+  var PREFIX = /^(s|sr|serum|plasma|blood|whole blood|calculated|method|total count)\s+/;
   function matchAnalyte(name) {
-    var n = norm(name);
-    if (!n) return null;
-    for (var i = 0; i < ANALYTES.length; i++) {
-      var al = ANALYTES[i].alias;
-      for (var j = 0; j < al.length; j++) if (al[j] === n) return ANALYTES[i];
+    var raw = String(name || ''), ix = index();
+    var base = norm(raw.replace(/\([^)]*\)/g, ' ')), full = norm(raw), tries = [full, base];
+    (raw.match(/\(([^)]*)\)/g) || []).forEach(function (p) { tries.push(norm(p)); });
+    tries.slice().forEach(function (t) { var u = t.replace(PREFIX, '').replace(/\s+(serum|plasma|blood|method|calculated|enzymatic)$/, ''); if (u !== t) tries.push(u); });
+    for (var i = 0; i < tries.length; i++) if (tries[i] && ix.exact[tries[i]]) return ix.exact[tries[i]];
+    // all the words of a known name appear in this name (e.g. "Cholesterol - Total" has the words of "total cholesterol")
+    var toks = full.split(' '), ratio = /ratio/.test(full);
+    if (toks.length > 7) return null;
+    for (var k = 0; k < ix.multi.length; k++) {
+      var m = ix.multi[k];
+      if (toks.length > m.t.length + 3) continue;
+      if (ratio !== (m.t.indexOf('ratio') >= 0)) continue;
+      if (m.t.every(function (w) { return toks.indexOf(w) >= 0; })) return m.a;
     }
-    // name with a method or sample suffix, e.g. "Cholesterol - Total, Serum"
-    var stripped = n.replace(/\b(serum|plasma|blood|whole blood|method|calculated|direct|enzymatic|photometry|cbc)\b/g, '').replace(/\s+/g, ' ').trim();
-    if (stripped !== n) for (i = 0; i < ANALYTES.length; i++) { al = ANALYTES[i].alias; for (j = 0; j < al.length; j++) if (al[j] === stripped) return ANALYTES[i]; }
     return null;
+  }
+
+  /* ---- what is on each page ---- */
+  var TOPICS = null;
+  function topics() {
+    if (TOPICS) return TOPICS;
+    TOPICS = (root.LAB_TOPICS || []).map(function (t) {
+      var words = {}, add = function (w) { var n = norm(w); if (n.length >= 4) words[n] = 1; };
+      (t.words || []).forEach(add);
+      if (t.kind === 'values') ANALYTES.forEach(function (a) {
+        if ((t.tests || [t.test]).indexOf(a.test) >= 0 || (t.keys && t.keys.indexOf(a.key) >= 0)) a.alias.forEach(add);
+      });
+      return { name: t.name, test: t.test, kind: t.kind, tests: t.tests || [t.test], keys: t.keys || [], head: t.head.map(norm), words: Object.keys(words) };
+    });
+    return TOPICS;
+  }
+  function topicScore(t, text) {
+    var sc = 0;
+    t.head.forEach(function (h) { if (text.indexOf(' ' + h + ' ') >= 0) sc += 3; });
+    t.words.forEach(function (w) { if (text.indexOf(' ' + w + ' ') >= 0) sc += 1; });
+    return sc;
+  }
+  /* For every page: is it a table of results, a written report (ECG, echo, scan) or other text, and which topics does it carry. */
+  function classifyPages(pages) {
+    return pages.map(function (pg) {
+      var text = ' ' + norm(pg.rows.map(function (r) { return r.cells.map(function (c) { return c.text; }).join(' '); }).join(' ')) + ' ';
+      var tab = pageScore(pg.rows), out = { page: pg.page, kind: 'text', topics: [], table: tab };
+      var sc = topics().map(function (t) { return { t: t, s: topicScore(t, text) }; });
+      if (tab >= 1) {
+        out.kind = 'results';
+        sc.filter(function (x) { return x.t.kind === 'values' && x.s >= 3; }).sort(function (a, b) { return b.s - a.s; }).forEach(function (x) { out.topics.push(x.t.name); });
+      } else {
+        var f = sc.filter(function (x) { return x.t.kind === 'findings' && x.s >= 4; }).sort(function (a, b) { return b.s - a.s; });
+        if (f.length) { out.kind = 'findings'; out.topics = [f[0].t.name]; }
+      }
+      return out;
+    });
+  }
+  function topicOfAnalyte(key) {
+    var a = null; ANALYTES.forEach(function (x) { if (x.key === key) a = x; });
+    if (!a) return '';
+    var t = topics().filter(function (x) { return x.kind === 'values' && (x.keys.indexOf(key) >= 0 || (!x.keys.length && x.tests.indexOf(a.test) >= 0)); })[0];
+    return t ? t.name : '';
   }
 
   /* ---- text items -> rows of cells ---- */
@@ -269,6 +330,6 @@
     return { meta: meta, tests: tests };
   }
 
-  root.LabParse = { guessCols: guessCols, pageScore: pageScore, pickPages: pickPages, rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
+  root.LabParse = { classifyPages: classifyPages, topicOfAnalyte: topicOfAnalyte, guessCols: guessCols, pageScore: pageScore, pickPages: pickPages, rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.LabParse;
 })(typeof window !== 'undefined' ? window : globalThis);

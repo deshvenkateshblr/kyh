@@ -29,6 +29,20 @@ def summary_pages(c, n=3):
         for j, t in enumerate(texts): c.drawString(40, H - 100 - j * 22, t)
         c.showPage()
 
+def style_f_echo(path):
+    c = canvas.Canvas(path, pagesize=A4)
+    c.setFont('Helvetica-Bold', 15); c.drawString(40, H - 60, 'Sample Cardiac Centre - 2D Echocardiography with Colour Doppler')
+    c.setFont('Helvetica', 10)
+    lines = ['Patient Name : Test Person     Age/Sex : 45 / M     Date : 14/03/2026',
+      'Left ventricle: normal size, LVEDD 48 mm, LVESD 30 mm. No regional wall motion abnormality.',
+      'Left ventricular ejection fraction (LVEF) 60 percent.',
+      'Mitral valve: normal, trivial regurgitation. Aortic valve: trileaflet, normal.',
+      'Left atrium and right ventricle are normal. No pericardial effusion.',
+      'Doppler: no significant gradient across any valve.',
+      'Impression: Normal study. Good LV systolic function.']
+    for i, t in enumerate(lines): c.drawString(40, H - 100 - i * 20, t)
+    c.save()
+
 def style_a(path, lead=0):
     c = canvas.Canvas(path, pagesize=A4)
     if lead: summary_pages(c, lead)
@@ -118,6 +132,7 @@ def style_d(path):
 
 style_a(os.path.join(OUT, 'style_a_table.pdf'))
 style_a(os.path.join(OUT, 'style_e_summary_first.pdf'), lead=3)
+style_f_echo(os.path.join(OUT, 'style_f_echo.pdf'))
 style_b(os.path.join(OUT, 'style_b_flags.pdf'))
 style_c(os.path.join(OUT, 'style_c_plain.pdf'))
 style_d(os.path.join(OUT, 'style_d_scan.pdf'))

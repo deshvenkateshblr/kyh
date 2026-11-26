@@ -42,7 +42,7 @@
       ' <button type="button" class="btn secondary" id="lab-open-kylt">Open a .kylt bundle</button>' +
       '<input type="file" id="lab-kylt-file" style="position:absolute;left:-9999px;" aria-label="Open a .kylt bundle">' +
       '<p id="lab-msg" class="lab-msg" role="status"></p></div>';
-    if (!res.length) {
+    if (!res.length && !labs().reports.length) {
       html += '<p class="lede" style="color:var(--muted);">No lab results saved yet.</p>';
     } else {
       if (flagged.length) {
@@ -82,7 +82,7 @@
     if (fTo && (r.date || '') > fTo) return false;
     if (fText) {
       var t = fText.toLowerCase();
-      var hay = (r.lab || '') + ' ' + labs().results.filter(function (x) { return x.r === r.id; }).map(function (x) { var a = analyteByKey(x.k); return x.n + ' ' + (a ? a.name : ''); }).join(' ');
+      var hay = (r.lab || '') + ' ' + (r.t || '') + ' ' + labs().results.filter(function (x) { return x.r === r.id; }).map(function (x) { var a = analyteByKey(x.k); return x.n + ' ' + (a ? a.name : ''); }).join(' ');
       if (hay.toLowerCase().indexOf(t) < 0) return false;
     }
     return true;
@@ -101,8 +101,8 @@
         '<label>Test or lab <input type="search" id="lab-fx" value="' + esc(fText) + '" placeholder="e.g. HbA1c, lipid" maxlength="40"></label></div>' +
         '<ul class="lab-reports">' + (shown.length ? shown.map(function (r) {
           var names = testNames(r.id), more = names.length > 4 ? ' +' + (names.length - 4) + ' more' : '';
-          return '<li><label class="lab-pick"><input type="checkbox" data-pick="' + esc(r.id) + '"' + (picked[r.id] ? ' checked' : '') + '> <span><strong>' + esc(fmtDate(r.date)) + '</strong>' + (r.lab ? ' &middot; ' + esc(r.lab) : '') + ' &middot; ' + (r.n || 0) + ' values' +
-            '<span class="lab-tests">' + esc(names.slice(0, 4).join(', ')) + more + '</span></span></label>' +
+          return '<li><label class="lab-pick"><input type="checkbox" data-pick="' + esc(r.id) + '"' + (picked[r.id] ? ' checked' : '') + '> <span><strong>' + esc(fmtDate(r.date)) + '</strong>' + (r.lab ? ' &middot; ' + esc(r.lab) : '') + ' &middot; ' + (r.n ? r.n + ' values' : 'written report, no values') +
+            '<span class="lab-tests">' + esc(r.t ? r.t + (names.length ? ': ' : '') : '') + esc(names.slice(0, 4).join(', ')) + more + '</span></span></label>' +
             '<span class="lab-li-act">' + (haveFile[r.id] ? '<button type="button" class="refine-back" data-view="' + esc(r.id) + '">View file</button>' : '<span class="lab-when">no file kept</span>') +
             ' <button type="button" class="refine-back" data-del="' + esc(r.id) + '">Remove</button></span></li>';
         }).join('') : '<li><span class="lab-when">No report matches these filters.</span></li>') + '</ul>' +
@@ -146,7 +146,7 @@
       var add = (k.labs.reports || []).filter(function (r) { return r && r.id && !have[r.id]; }), ids = {}; add.forEach(function (r) { ids[r.id] = 1; });
       var res = (k.labs.results || []).filter(function (x) { return ids[x.r]; });
       if (L.results.length + res.length > MAX_RESULTS) { msg('That bundle has more values than KYH can keep in one file.'); return; }
-      add.forEach(function (r) { L.reports.push({ id: String(r.id).slice(0, 30), date: String(r.date || '').slice(0, 10), lab: String(r.lab || '').slice(0, 60), n: +r.n || 0 }); });
+      add.forEach(function (r) { L.reports.push({ id: String(r.id).slice(0, 30), date: String(r.date || '').slice(0, 10), lab: String(r.lab || '').slice(0, 60), n: +r.n || 0, t: String(r.t || '').slice(0, 120) }); });
       res.forEach(function (x) { L.results.push({ r: x.r, k: String(x.k || '').slice(0, 40), n: String(x.n || '').slice(0, 80), v: String(x.v || '').slice(0, 30), u: String(x.u || '').slice(0, 30), f: String(x.f || '').slice(0, 120), s: String(x.s || '').slice(0, 12), b: String(x.b || '').slice(0, 40), d: String(x.d || '').slice(0, 10) }); });
       return Promise.all(Object.keys(k.files).filter(function (id) { return ids[id]; }).map(function (id) { return LabBinder.put(id, k.files[id]); })).then(function () {
         persist(); renderList();
@@ -176,7 +176,8 @@
       })(i);
       return p.then(function () {
         var pk = LabParse.pickPages(pages), g = LabParse.guessCols(pages, pk.sel), out = LabParse.extract(pages, sex, pk.sel, g && g.cols);
-        var rows = toRows(out.tests), r = { rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores, cols: g ? g.cols : null, how: g ? g.how : '' };
+        var rows = toRows(out.tests), r = { rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores, cols: g ? g.cols : null, how: g ? g.how : '', cls: LabParse.classifyPages(pages) };
+        r.noText = !rows.length && !r.cls.some(function (c) { return c.kind === 'findings'; });
         if (r.noText) openReview(r); else openGuess(r);
       });
     }).catch(function (err) {
@@ -185,6 +186,18 @@
     });
   }
 
+  function reportTopics() {
+    if (!cur || !cur.cls) return '';
+    var seen = {}, out = [];
+    cur.cls.forEach(function (c) { if (c.kind === 'findings' || cur.sel.indexOf(c.page) >= 0) c.topics.forEach(function (t) { if (!seen[t]) { seen[t] = 1; out.push(t); } }); });
+    return out.join(', ');
+  }
+  function foundByTopic() {
+    var by = {}, order = [];
+    cur.rows.forEach(function (r) { var t = (r.analyte && LabParse.topicOfAnalyte(r.analyte)) || 'Not named'; if (!by[t]) { by[t] = 0; order.push(t); } by[t]++; });
+    return order.map(function (t) { return t + ' ' + by[t]; }).join(', ');
+  }
+  var KIND_LABEL = { results: 'a table of results', findings: 'a written report', text: 'text only (summary or cover)' };
   function toRows(tests) { return tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }); }
 
   /* ================= first: what we think this report is ================= */
@@ -197,7 +210,7 @@
       '<p class="lede">We looked at the report first and made a guess. Check it against the page. If something is off, fix it here; it takes a few taps and makes the whole report come out right.</p></div>' +
       '<div class="lab-split"><div class="lab-left">' +
       '<ul class="lab-guess" id="lab-guess"></ul><div id="lab-pages" class="lab-pages"></div>' +
-      '<div class="lab-colfix" id="lab-colfix"></div>' +
+      '<div class="lab-colfix" id="lab-colfix"></div><div id="lab-notebox"></div>' +
       '<div class="lab-pagehead">The first rows, read this way</div><div id="lab-sample"></div>' +
       '<div class="lab-binder-act"><button type="button" class="btn" id="lab-go">Yes, read the whole report this way</button> <button type="button" class="btn secondary" id="lab-cancel">Cancel</button></div>' +
       '<p id="lab-save-msg" class="lab-msg" role="status"></p></div>' +
@@ -215,6 +228,15 @@
     });
     window.scrollTo(0, 0);
   }
+  function saveNote() {
+    var d = document.getElementById('lab-note-date').value, m = document.getElementById('lab-save-msg');
+    if (!d) { m.textContent = 'Add the date of the report first.'; return; }
+    var L = labs(); if (L.reports.length >= 400) { m.textContent = 'That is the most reports one file can keep.'; return; }
+    var id = 'r' + Date.now().toString(36);
+    L.reports.push({ id: id, date: d, lab: (cur.meta.lab || '').slice(0, 60), n: 0, t: reportTopics().slice(0, 120) });
+    if (cur.file) LabBinder.put(id, cur.file);
+    persist(); renderList(); msg('Kept the report. Find it under Reports you added.');
+  }
   function reread() {
     var out = LabParse.extract(cur.pages, sex, cur.sel, cur.cols);
     cur.rows = toRows(out.tests); if (!cur.meta.date) cur.meta.date = out.meta.date; if (!cur.meta.lab) cur.meta.lab = out.meta.lab;
@@ -229,7 +251,14 @@
       '<li><strong>Sample taken:</strong> ' + (cur.meta.date ? esc(fmtDate(cur.meta.date)) : 'not found (you can add it next)') + '</li>' +
       '<li><strong>Results are on page' + (cur.sel.length === 1 ? '' : 's') + ':</strong> ' + (cur.sel.length ? ranges(cur.sel) : 'none found') + (skipped.length ? '. We skipped ' + ranges(skipped) + ' (looks like summary or cover text).' : '.') + '</li>' +
       '<li><strong>Each result row reads:</strong> ' + (cn.length ? esc(cn.join('  →  ')) : 'we could not find the columns, tap them below') + (cur.how === 'header' ? ' <span class="lab-when">(from the column headings)</span>' : cur.how === 'numbers' ? ' <span class="lab-when">(from where the numbers sit)</span>' : cur.how === 'you' ? ' <span class="lab-when">(as you set it)</span>' : '') + '</li>' +
-      '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + '</li>';
+      '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + (cur.rows.length ? ' (' + esc(foundByTopic()) + ')' : '') + '</li>' +
+      '<li><strong>What each page is:</strong><ul class="lab-pagelist">' + (cur.cls || []).map(function (c) {
+        return '<li>Page ' + c.page + ': ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + '</li>'; }).join('') + '</ul></li>';
+    var fnd = (cur.cls || []).filter(function (c) { return c.kind === 'findings'; });
+    var nb = document.getElementById('lab-notebox');
+    if (nb) nb.innerHTML = fnd.length ? '<div class="lab-pages-t">Written report found</div><p class="lab-fine">' + esc(fnd.map(function (c) { return 'Page ' + c.page + ' looks like ' + c.topics[0]; }).join('; ')) + '. These carry no numbers to read. You can keep the report and its file under that name.</p>' +
+      '<div class="lab-meta"><label>Report date <input type="date" id="lab-note-date" value="' + esc(cur.meta.date || '') + '"></label> <button type="button" class="btn secondary" id="lab-note">Keep as a report without values</button></div>' : '';
+    var nbtn = document.getElementById('lab-note'); if (nbtn) nbtn.addEventListener('click', saveNote);
     var cf = document.getElementById('lab-colfix');
     cf.innerHTML = '<div class="lab-pages-t">Not right? Set a column, then tap it on the page</div><div class="lab-chips">' +
       ROLES.map(function (x) { return '<button type="button" class="lab-chip' + (cur.tap === x[0] ? ' on' : '') + '" data-role="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
@@ -391,7 +420,7 @@
       L.results = L.results.filter(function (x) { return !(x.d === date && (key ? x.k === key : x.n === nm)); });
       L.results.push({ r: id, k: key, n: nm, v: String(r.value).trim().slice(0, 30), u: String(r.unit || '').trim().slice(0, 30), f: String(r.ref || '').trim().slice(0, 120), s: r.status || '', b: r.band || '', d: date });
     });
-    L.reports.push({ id: id, date: date, lab: labName, n: keep.length });
+    L.reports.push({ id: id, date: date, lab: labName, n: keep.length, t: reportTopics().slice(0, 120) });
     if (cur && cur.file) LabBinder.put(id, cur.file);
     persist();
     renderList();
