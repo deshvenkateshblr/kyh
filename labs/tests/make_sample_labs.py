@@ -4,7 +4,7 @@ All names, ids and values are invented."""
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import os
-OUT = os.path.join(os.path.dirname(__file__), 'fixtures', 'labs')
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 os.makedirs(OUT, exist_ok=True)
 W, H = A4
 

@@ -471,7 +471,7 @@ def phone_fit(browser, base):
     prof = {'age': 45, 'sex': 'Male', 'heightCm': 172, 'weightKg': 80, 'bmi': 27, 'whtr': None, 'waistCm': None, 'symptoms': ['Fatigue'], 'smoking': 'Never', 'dietType': 'Vegetarian'}
     state = {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {'mode': 'simple', 'dayType': 'sit', 'exerciseDays': 'none', 'estimatedCalories': 2200, 'activities': [], 'activitiesConfirmed': True}}
     bad = []
-    for pg in ('index.html', 'profile.html', 'diagnostics.html', 'symptoms.html', 'routine.html', 'diet.html', 'diet-synthesis.html', 'summary.html', 'nextsteps.html', 'routine-plan.html', 'routine-config.html', 'labs.html'):
+    for pg in ('index.html', 'profile.html', 'diagnostics.html', 'symptoms.html', 'routine.html', 'diet.html', 'diet-synthesis.html', 'summary.html', 'nextsteps.html', 'routine-plan.html', 'routine-config.html'):
         inject(page, base, state, pg)
         page.wait_for_timeout(500)
         page.evaluate("""() => { const all = [...document.querySelectorAll('body *')]; const f0 = all.map(e => parseFloat(getComputedStyle(e).fontSize)); all.forEach((e, i) => { if (f0[i]) e.style.setProperty('font-size', (f0[i] * 1.5) + 'px', 'important'); }); }""")
@@ -516,109 +516,6 @@ def honest_flow(browser, base):
     inject(page, base, {'profile': prof, 'vitals': {}, 'diagnostics': {}, 'routine': {}}, 'nextsteps.html')
     page.wait_for_timeout(500)
     check('open my doctor brief' in page.inner_text('main').lower() and page.locator('.page-footer-nav a[href="index.html"]').count() == 0, 'next steps: finish leads to the Doctor Brief, not home')
-    page.close()
-
-
-def labs_module(browser, base):
-    print('\nLab reports module')
-    import json as _j, os as _o
-    page = browser.new_page(viewport={'width': 1200, 'height': 900})
-    errs = []
-    page.on('pageerror', lambda e: errs.append(str(e)))
-    page.on('dialog', lambda d: d.accept())
-    state = {'profile': {'age': 45, 'sex': 'Male'}, 'vitals': {}, 'diagnostics': {}, 'routine': {}}
-    fx = _o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'fixtures', 'labs')
-    def load(name):
-        inject(page, base, state, 'labs.html')
-        page.wait_for_selector('#lab-file', state='attached')
-        page.set_input_files('#lab-file', _o.path.join(fx, name))
-        page.wait_for_selector('#lab-go, #lab-save', timeout=20000)
-        if page.locator('#lab-go').count(): page.click('#lab-go')
-        page.wait_for_selector('#lab-save', timeout=20000)
-        page.wait_for_timeout(600)
-    def rows():
-        return page.evaluate("() => [...document.querySelectorAll('#lab-rows .lab-row')].map(r => [...r.querySelectorAll('input[data-f]')].map(i => i.value).join('|'))")
-    load('style_a_table.pdf'); ra = rows()
-    check(len(ra) >= 12, 'style A: rows extracted', str(len(ra)))
-    check(page.input_value('#lab-date') == '2026-03-12', 'style A: date read')
-    check(any('|HbA1c|' in r for r in ra), 'style A: HbA1c present')
-    load('style_b_flags.pdf'); rb = rows()
-    check(len(rb) >= 6, 'style B: rows extracted', str(len(rb)))
-    load('style_c_plain.pdf'); rc = rows()
-    check(len(rc) >= 6 and page.input_value('#lab-date') == '2026-03-05', 'style C: rows from both pages and date', str(len(rc)))
-    load('style_d_scan.pdf')
-    check(len(rows()) == 0 and 'no readable text' in page.inner_text('.lab-hero, main'), 'style D: scan says no readable text')
-    load('style_a_table.pdf')
-    page.click('#lab-rows .lab-row >> nth=2'); page.wait_for_timeout(400)
-    check(page.evaluate("() => { const h = document.getElementById('lab-hl'); return !!h && h.offsetWidth > 0; }"), 'row click highlights the page')
-    page.fill('#lab-rows .lab-row >> nth=0 >> input[data-f=value]', '14.0')
-    check('range' in page.inner_text('#lab-rows .lab-row >> nth=0 >> [data-st]').lower(), 'editing a value recomputes status')
-    page.click('#lab-save'); page.wait_for_timeout(500)
-    st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
-    check(len(st['labs']['reports']) == 1 and len(st['labs']['results']) >= 12, 'save writes state.labs')
-    check('worth raising' in page.inner_text('main').lower(), 'flagged list shown')
-    page.click('[data-del] >> nth=0'); page.wait_for_timeout(400)
-    st = _j.loads(page.evaluate("k => sessionStorage.getItem(k)", 'chart_state_v1'))
-    check(len((st.get('labs') or {}).get('results', [])) == 0, 'remove report clears its values')
-    # guess screen first
-    inject(page, base, state, 'labs.html'); page.wait_for_selector('#lab-file', state='attached')
-    page.set_input_files('#lab-file', _o.path.join(fx, 'style_e_summary_first.pdf')); page.wait_for_selector('#lab-go', timeout=20000); page.wait_for_timeout(500)
-    gt = page.inner_text('#lab-guess')
-    check('Tata 1mg' in gt and '12 Mar 2026' in gt and '4–5' in gt, 'guess screen names the lab, date and result pages', gt[:200].replace('\n', ' '))
-    check('Test name' in gt and 'Result' in gt and 'Unit' in gt and 'Range' in gt, 'guess screen shows the column layout')
-    check(page.locator('.lab-band').count() >= 4, 'columns are drawn on the page')
-    check(page.locator('#lab-sample tbody tr').count() >= 5, 'guess screen shows the first rows read this way')
-    check('Complete blood count' in gt and 'Lipid profile' in gt, 'guess screen names what is on the result pages', gt[-300:].replace('\n', ' '))
-    check('Page 1: text only' in gt, 'summary pages are labelled as text only')
-    inject(page, base, state, 'labs.html'); page.wait_for_selector('#lab-file', state='attached')
-    page.set_input_files('#lab-file', _o.path.join(fx, 'style_f_echo.pdf')); page.wait_for_selector('#lab-go', timeout=20000)
-    check('Echocardiogram' in page.inner_text('#lab-guess') and page.locator('#lab-note').count() == 1, 'an echo report is recognised as a written report')
-    page.fill('#lab-note-date', '2026-03-14'); page.click('#lab-note'); page.wait_for_timeout(500)
-    check('written report' in page.inner_text('.lab-reports'), 'written report is kept without values')
-    inject(page, base, state, 'labs.html'); page.wait_for_selector('#lab-file', state='attached')
-    page.set_input_files('#lab-file', _o.path.join(fx, 'style_e_summary_first.pdf')); page.wait_for_selector('#lab-go', timeout=20000); page.wait_for_timeout(400)
-    n0 = page.locator('#lab-sample tbody tr').count()
-    page.select_option('[data-kind="4"]', 'text'); page.wait_for_timeout(400)
-    check('Page 4: text only' in page.inner_text('#lab-guess') and 'you set this' in page.inner_text('#lab-guess') and page.locator('#lab-sample tbody tr').count() < n0, 'marking a page as summary skips it')
-    page.select_option('[data-kind="4"]', 'results'); page.wait_for_timeout(400)
-    check(page.locator('#lab-sample tbody tr').count() == n0, 'marking it as results brings the rows back')
-    page.click('#lab-mark-sum'); page.wait_for_timeout(300)
-    check('marked as a summary' in page.inner_text('#lab-save-msg'), 'summary button works on the page being viewed')
-    page.select_option('[data-kind="4"]', 'results'); page.wait_for_timeout(300)
-    page.click('[data-role="unit"]'); bx = page.locator('#lab-canvas').bounding_box(); page.mouse.click(bx['x'] + bx['width'] * 0.8, bx['y'] + 200); page.wait_for_timeout(500)
-    check('as you set it' in page.inner_text('#lab-guess'), 'tapping the page sets a column')
-    load('style_e_summary_first.pdf')
-    chips = page.evaluate("() => [...document.querySelectorAll('.lab-chip')].map(c => c.classList.contains('on'))")
-    check(chips == [False, False, False, True, True], 'summary pages are skipped and result pages ticked', str(chips))
-    check(len(rows()) >= 12 and page.input_value('#lab-date') == '2026-03-12', 'summary-first report: results and date still found', str(len(rows())))
-    page.click('[data-pg="1"]'); page.wait_for_timeout(400)
-    n_on = len(rows()); page.click('[data-pg="1"]'); page.wait_for_timeout(400)
-    check(n_on > len(rows()), 'page chips re-read the list')
-    page.click('#lab-dumpbtn'); page.wait_for_timeout(300)
-    check(page.evaluate("() => document.getElementById('lab-dump').value").startswith('KYH layout'), 'layout dump available')
-    # binder: two reports, filter by date and test, .kylt round trip
-    import zipfile as _z
-    ctx = browser.new_context(viewport={'width': 1200, 'height': 900}, accept_downloads=True)
-    p2 = ctx.new_page(); p2.on('dialog', lambda d: d.accept()); p2.on('pageerror', lambda e: errs.append(str(e)))
-    inject(p2, base, state, 'labs.html')
-    for f in ('style_a_table.pdf', 'style_c_plain.pdf'):
-        p2.set_input_files('#lab-file', _o.path.join(fx, f)); p2.wait_for_selector('#lab-go'); p2.click('#lab-go'); p2.wait_for_selector('#lab-save'); p2.wait_for_timeout(500); p2.click('#lab-save'); p2.wait_for_timeout(600)
-    check(p2.locator('.lab-reports li').count() == 2, 'binder lists both reports')
-    p2.fill('#lab-ff', '2026-03-10'); p2.wait_for_timeout(500)
-    check(p2.locator('.lab-reports li').count() == 1, 'filter by from-date')
-    p2.fill('#lab-ff', ''); p2.fill('#lab-fx', 'lipid'); p2.press('#lab-fx', 'Enter'); p2.wait_for_timeout(500)
-    check(p2.locator('.lab-reports li').count() == 1, 'filter by test name')
-    p2.fill('#lab-fx', ''); p2.press('#lab-fx', 'Enter'); p2.wait_for_timeout(400)
-    with p2.expect_download() as dl: p2.click('#lab-kylt-save')
-    kp = '/tmp/_flow.kylt'; dl.value.save_as(kp)
-    names = _z.ZipFile(kp).namelist()
-    check(dl.value.suggested_filename.endswith('.kylt') and sum(n.endswith('.pdf') for n in names) == 2 and 'labs.json' in names, '.kylt holds both PDFs and the values', str(names)[:120])
-    ctx2 = browser.new_context(viewport={'width': 1200, 'height': 900}); p3 = ctx2.new_page(); p3.on('pageerror', lambda e: errs.append(str(e)))
-    inject(p3, base, state, 'labs.html')
-    p3.set_input_files('#lab-kylt-file', kp); p3.wait_for_timeout(1200)
-    check(p3.locator('.lab-reports li').count() == 2 and p3.locator('[data-view]').count() == 2, 'opening a .kylt restores reports and files')
-    ctx.close(); ctx2.close()
-    check(not errs, 'no script errors on labs page', str(errs[:2]))
     page.close()
 
 
@@ -1001,10 +898,6 @@ def main():
             honest_flow(browser, base)
         except Exception as e:
             check(False, 'honest flow checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
-        try:
-            labs_module(browser, base)
-        except Exception as e:
-            check(False, 'lab module checks stopped', f'{type(e).__name__}: {str(e).splitlines()[0][:200]}')
         try:
             quick_day(browser, base)
         except Exception as e:

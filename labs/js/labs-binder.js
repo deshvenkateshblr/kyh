@@ -1,22 +1,22 @@
-/* KYH lab binder: keeps the original report files in this browser (IndexedDB) and packs them with the confirmed
-   values into one .kylt file (a normal zip). Nothing is uploaded. The .kyh file never contains the files. */
+/* Lab binder: keeps the original report files in this browser (IndexedDB) and packs them with the confirmed
+   values into one .kylt file (a normal zip). Nothing is uploaded. */
 (function (root) {
   'use strict';
-  var DB = 'kyh_labs_files_v1', STORE = 'files', mem = {};
+  var DB = 'labbinder_v1', STORE = 'files', META = 'meta', mem = {}, memMeta = null;
   function open() {
     return new Promise(function (res, rej) {
       try {
         var q = indexedDB.open(DB, 1);
-        q.onupgradeneeded = function () { q.result.createObjectStore(STORE); };
+        q.onupgradeneeded = function () { q.result.createObjectStore(STORE); q.result.createObjectStore(META); };
         q.onsuccess = function () { res(q.result); };
         q.onerror = function () { rej(q.error); };
       } catch (e) { rej(e); }
     });
   }
-  function tx(mode, fn) {
+  function tx(mode, fn, store) {
     return open().then(function (db) {
       return new Promise(function (res, rej) {
-        var t = db.transaction(STORE, mode), out = fn(t.objectStore(STORE));
+        var t = db.transaction(store || STORE, mode), out = fn(t.objectStore(store || STORE));
         t.oncomplete = function () { res(out && out.result !== undefined ? out.result : undefined); db.close(); };
         t.onerror = t.onabort = function () { rej(t.error); db.close(); };
       });
@@ -27,6 +27,8 @@
   function del(id) { delete mem[id]; return tx('readwrite', function (s) { return s.delete(id); }).catch(function () {}); }
   function keys() { return tx('readonly', function (s) { return s.getAllKeys(); }).then(function (k) { return (k || []).concat(Object.keys(mem)); }).catch(function () { return Object.keys(mem); }); }
 
+  function saveMeta(m) { memMeta = m; return tx('readwrite', function (s) { return s.put(m, 'state'); }, META).catch(function () {}); }
+  function loadMeta() { return tx('readonly', function (s) { return s.get('state'); }, META).then(function (m) { return m || memMeta; }).catch(function () { return memMeta; }); }
   var EXT = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic' };
   function safe(s) { return String(s || '').normalize('NFKD').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 40); }
   function fileName(rep, names) {
@@ -43,7 +45,7 @@
     });
     return lines.join('\n');
   }
-  /* reports: chosen report objects. withData: include labs.json so KYH can open it again (.kylt). */
+  /* reports: chosen report objects. withData: include labs.json so this page can open it again (.kylt). */
   function buildZip(reports, results, withData) {
     var ids = {}; reports.forEach(function (r) { ids[r.id] = 1; });
     var res = results.filter(function (x) { return ids[x.r]; });
@@ -81,5 +83,5 @@
       return { labs: labs, files: out };
     });
   }
-  root.LabBinder = { put: put, get: get, del: del, keys: keys, buildZip: buildZip, readKylt: readKylt, fileName: fileName };
+  root.LabBinder = { saveMeta: saveMeta, loadMeta: loadMeta, put: put, get: get, del: del, keys: keys, buildZip: buildZip, readKylt: readKylt, fileName: fileName };
 })(window);

@@ -94,7 +94,7 @@ function purgeLegacyRemember() {
    untrusted input. Keep only known top-level keys, drop prototype-polluting
    keys, cap size/depth, and strip < > from every string so it can never be
    turned into markup even if some page forgets to escape it. */
-const STATE_ALLOWED_KEYS = ['acknowledgedLimitations','profile','vitals','diagnostics','routine','exercises','diet','labs'];
+const STATE_ALLOWED_KEYS = ['acknowledgedLimitations','profile','vitals','diagnostics','routine','exercises','diet'];
 // Active-care symptoms the app does not take (About page scope). Kept out of the picker and out of incoming state.
 window.RED_FLAG_SYMPTOMS = new Set(['Chest Pain', 'Fainting / Passing Out', 'Blood in Stool', 'Palpable Lump']);
 
@@ -122,7 +122,7 @@ function sanitizeIncomingState(input) {
     if (typeof v === 'string') return v.slice(0, 500).replace(/[<>]/g, '');
     if (typeof v === 'number') return isFinite(v) ? v : undefined;
     if (typeof v === 'boolean' || v === null) return v;
-    if (Array.isArray(v)) return v.slice(0, 1500).map(x => clean(x, depth + 1)).filter(x => x !== undefined);
+    if (Array.isArray(v)) return v.slice(0, 300).map(x => clean(x, depth + 1)).filter(x => x !== undefined);
     if (typeof v === 'object') {
       const out = {};
       Object.keys(v).slice(0, 300).forEach(k => {

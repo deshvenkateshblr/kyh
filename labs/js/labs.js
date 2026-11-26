@@ -1,18 +1,17 @@
-/* My lab reports: add a report, check the values it finds beside the page, keep them in one place.
-   The file is read in this browser and is never uploaded or stored. Only the values the person confirms are kept (state.labs),
-   so they travel in the .kyh file like everything else. Needs data.labs.js, utils.js, pdf.js, labs-parse.js. */
+/* Lab binder: add a report, check the values it finds beside the page, keep them in one place.
+   Stand-alone: needs only data.labs.js, pdf.js, fflate, labs-binder.js, labs-parse.js. The file is read in this browser and is never
+   uploaded. The confirmed values and the original files are kept in this browser (IndexedDB) and travel in a .kylt bundle. */
 (function () {
-  var state = loadState();
-  renderHeader('diagnostics', 'KYH-My lab reports');
-  renderFooter({ disclaimer: true });
+  var state = { labs: { reports: [], results: [] }, sex: '' };
   var main = document.getElementById('main-content');
-  var sex = (state.profile && state.profile.sex) || null;
+  var sex = null;
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var STATUS = { normal: 'In range', borderline: 'Borderline', low: 'Low', high: 'High', abnormal: 'Check', '': 'No range' };
   var MAX_RESULTS = 1400;
   var cur = null;   // report being reviewed: { rows, meta, pdf, page, scale, kind, imgUrl }
 
   function labs() { state.labs = state.labs || { reports: [], results: [] }; state.labs.reports = state.labs.reports || []; state.labs.results = state.labs.results || []; return state.labs; }
-  function persist() { persistState(state); }
+  function persist() { LabBinder.saveMeta({ labs: state.labs, sex: state.sex || '' }); }
   function analyteByKey(k) { return (window.LAB_ANALYTES || []).filter(function (a) { return a.key === k; })[0] || null; }
   function fmtDate(iso) { if (!iso) return 'undated'; var p = iso.split('-'); var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][(+p[1] || 1) - 1]; return (+p[2]) + ' ' + m + ' ' + p[0]; }
   function badge(s) { return '<span class="lab-badge lab-' + (s || 'none') + '">' + STATUS[s || ''] + '</span>'; }
@@ -33,7 +32,7 @@
     });
     var html = '<div class="lab-hero"><h1>My lab reports</h1>' +
       '<p class="lede">Add a report, check each value beside the page, and keep them all in one place. The report is read here in your browser and is never uploaded. ' +
-      'The values you confirm go into your <strong>.kyh</strong> file. The original file stays in this browser only; to carry it with you, save a <strong>.kylt</strong> bundle (values and files together) below.</p></div>' +
+      'The values you confirm and the original file stay in this browser only. To keep a copy or move them to another device, save a <strong>.kylt</strong> bundle (values and files together) below.</p></div>' +
       '<div class="note-block lab-add" id="lab-add"><span class="k">Add a report</span>' +
       '<p style="margin:6px 0 12px;font-size:14px;">A PDF from your lab works best. For a photo or scan, you can see the page and type the values in.</p>' +
       '<label class="btn" for="lab-file" id="lab-file-btn">Choose a PDF or photo</label>' +
@@ -41,6 +40,7 @@
       ' <button type="button" class="btn secondary" id="lab-manual">Type values by hand</button>' +
       ' <button type="button" class="btn secondary" id="lab-open-kylt">Open a .kylt bundle</button>' +
       '<input type="file" id="lab-kylt-file" style="position:absolute;left:-9999px;" aria-label="Open a .kylt bundle">' +
+      '<div><label class="lab-sexpick">Ranges that differ by sex: use <select id="lab-sex"><option value="">not set</option><option value="Male"' + (sex === 'Male' ? ' selected' : '') + '>Male</option><option value="Female"' + (sex === 'Female' ? ' selected' : '') + '>Female</option></select></label></div>' +
       '<p id="lab-msg" class="lab-msg" role="status"></p></div>';
     if (!res.length && !labs().reports.length) {
       html += '<p class="lede" style="color:var(--muted);">No lab results saved yet.</p>';
@@ -68,6 +68,7 @@
     }
     main.innerHTML = html;
     document.getElementById('lab-file').addEventListener('change', onFile);
+    document.getElementById('lab-sex').addEventListener('change', function (e) { state.sex = e.target.value; sex = state.sex || null; persist(); });
     document.getElementById('lab-open-kylt').addEventListener('click', function () { document.getElementById('lab-kylt-file').click(); });
     document.getElementById('lab-kylt-file').addEventListener('change', onKylt);
     if (document.getElementById('lab-binder')) paintBinder();
@@ -108,7 +109,7 @@
         }).join('') : '<li><span class="lab-when">No report matches these filters.</span></li>') + '</ul>' +
         '<div class="lab-binder-act"><button type="button" class="btn" id="lab-kylt-save"' + (nSel ? '' : ' disabled') + '>Save ' + nSel + ' as .kylt (values + files)</button> ' +
         '<button type="button" class="btn secondary" id="lab-zip-save"' + (nSel ? '' : ' disabled') + '>Files only (.zip)</button></div>' +
-        '<p class="lab-fine">A .kylt bundle contains your report files, which show your name and ID. Share it only with people you trust. To share just the numbers, use your .kyh file or the Doctor Brief. Reports added on another device appear here when you open the .kylt.</p>' +
+        '<p class="lab-fine">A .kylt bundle contains your report files, which show your name and ID. Share it only with people you trust. To share just the numbers, use the values.csv inside the file. Reports added on another device appear here when you open the .kylt.</p>' +
         '<p id="lab-bmsg" class="lab-msg" role="status"></p>';
       var again = function () { paintBinder(); };
       document.getElementById('lab-ff').addEventListener('change', function (e) { fFrom = e.target.value; again(); });
@@ -119,7 +120,7 @@
         LabBinder.get(b.getAttribute('data-view')).then(function (rec) { if (!rec) return; var u = URL.createObjectURL(new Blob([rec.bytes], { type: rec.type })); var w = window.open(u, '_blank'); if (!w) location.href = u; setTimeout(function () { URL.revokeObjectURL(u); }, 60000); });
       }); });
       host.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () {
-        if (!confirm('Remove this report, its values and the kept file from KYH?')) return;
+        if (!confirm('Remove this report, its values and the kept file from this browser?')) return;
         var id = b.getAttribute('data-del'), L2 = labs();
         L2.reports = L2.reports.filter(function (r) { return r.id !== id; }); L2.results = L2.results.filter(function (r) { return r.r !== id; });
         LabBinder.del(id).then(function () { persist(); renderList(); });
@@ -130,7 +131,7 @@
         var sel = chosen(); if (!sel.length) return;
         LabBinder.buildZip(sel, labs().results, withData).then(function (z) {
           var ds = sel.map(function (r) { return r.date || ''; }).filter(Boolean).sort();
-          var nm = (withData ? 'kyh-labs-' : 'lab-files-') + (ds.length ? ds[0] + (ds.length > 1 && ds[ds.length - 1] !== ds[0] ? '_to_' + ds[ds.length - 1] : '') : 'undated') + (withData ? '.kylt' : '.zip');
+          var nm = (withData ? 'lab-binder-' : 'lab-files-') + (ds.length ? ds[0] + (ds.length > 1 && ds[ds.length - 1] !== ds[0] ? '_to_' + ds[ds.length - 1] : '') : 'undated') + (withData ? '.kylt' : '.zip');
           var u = URL.createObjectURL(z.blob), a = document.createElement('a'); a.href = u; a.download = nm; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
           bm('Saved ' + nm + ' with ' + z.count + ' file' + (z.count === 1 ? '' : 's') + (z.missing ? '. ' + z.missing + ' report' + (z.missing === 1 ? ' has' : 's have') + ' no file kept on this device, so only its values are in the list.' : '.'));
         }).catch(function () { bm('Could not build the file. Try fewer reports.'); });
@@ -145,14 +146,14 @@
       var L = labs(), have = {}; L.reports.forEach(function (r) { have[r.id] = 1; });
       var add = (k.labs.reports || []).filter(function (r) { return r && r.id && !have[r.id]; }), ids = {}; add.forEach(function (r) { ids[r.id] = 1; });
       var res = (k.labs.results || []).filter(function (x) { return ids[x.r]; });
-      if (L.results.length + res.length > MAX_RESULTS) { msg('That bundle has more values than KYH can keep in one file.'); return; }
+      if (L.results.length + res.length > MAX_RESULTS) { msg('That bundle has more values than can be kept in one list.'); return; }
       add.forEach(function (r) { L.reports.push({ id: String(r.id).slice(0, 30), date: String(r.date || '').slice(0, 10), lab: String(r.lab || '').slice(0, 60), n: +r.n || 0, t: String(r.t || '').slice(0, 120) }); });
       res.forEach(function (x) { L.results.push({ r: x.r, k: String(x.k || '').slice(0, 40), n: String(x.n || '').slice(0, 80), v: String(x.v || '').slice(0, 30), u: String(x.u || '').slice(0, 30), f: String(x.f || '').slice(0, 120), s: String(x.s || '').slice(0, 12), b: String(x.b || '').slice(0, 40), d: String(x.d || '').slice(0, 10) }); });
       return Promise.all(Object.keys(k.files).filter(function (id) { return ids[id]; }).map(function (id) { return LabBinder.put(id, k.files[id]); })).then(function () {
         persist(); renderList();
-        msg('Added ' + add.length + ' report' + (add.length === 1 ? '' : 's') + ' from the bundle' + (add.length < (k.labs.reports || []).length ? ' (the rest were already here)' : '') + '. Remember to save your .kyh file.');
+        msg('Added ' + add.length + ' report' + (add.length === 1 ? '' : 's') + ' from the bundle' + (add.length < (k.labs.reports || []).length ? ' (the rest were already here)' : '') + '. They are kept in this browser; save a .kylt copy to back them up.');
       });
-    }).catch(function () { msg('That file could not be read. Pick a .kylt file saved from KYH.'); });
+    }).catch(function () { msg('That file could not be read. Pick a .kylt file saved from this page.'); });
   }
 
   /* ================= reading a file ================= */
@@ -167,7 +168,7 @@
     msg('Reading the report in your browser…');
     f.arrayBuffer().then(function (buf) {
       keep = { name: f.name, type: 'application/pdf', bytes: buf.slice(0) };
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'shared/vendor/pdf.worker.min.js?v=3.11.174';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js?v=3.11.174';
       return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
     }).then(function (pdf) {
       var pages = [], p = Promise.resolve();
@@ -344,7 +345,7 @@
   /* what the parser sees on the current page, with name-like and id-like lines masked, so a layout can be shared for troubleshooting */
   function layoutDump() {
     var pg = cur.pages && cur.pages.filter(function (p) { return p.page === cur.page; })[0]; if (!pg) return '';
-    return 'KYH layout, page ' + cur.page + '\n' + pg.rows.map(function (r) {
+    return 'Layout, page ' + cur.page + '\n' + pg.rows.map(function (r) {
       var line = r.cells.map(function (c) { return c.text; }).join(' ');
       if (/(name|patient|customer|mobile|phone|address|e-?mail|\bdob\b|referred|lab visit|barcode|\bid\b|uhid|pin ?code|www\.|@)/i.test(line)) return 'y=' + Math.round(r.y) + ' [line removed]';
       return 'y=' + Math.round(r.y) + ' ' + r.cells.map(function (c) { return Math.round(c.x) + ':' + c.text.replace(/\d{7,}/g, '#'); }).join(' | ');
@@ -429,9 +430,9 @@
     var keep = cur.rows.filter(function (r) { return r.on && r.name.trim() && String(r.value).trim(); });
     var sm = document.getElementById('lab-save-msg');
     if (!keep.length) { sm.textContent = 'Nothing to save yet. Add at least one value with a name and result.'; return; }
-    if (!date) { sm.textContent = 'Add the report date first. It lets KYH show how your values change over time.'; document.getElementById('lab-date').focus(); return; }
+    if (!date) { sm.textContent = 'Add the report date first. It lets the page show how your values change over time.'; document.getElementById('lab-date').focus(); return; }
     var L = labs();
-    if (L.results.length + keep.length > MAX_RESULTS) { sm.textContent = 'That is more values than KYH can keep in one file. Remove an older report first.'; return; }
+    if (L.results.length + keep.length > MAX_RESULTS) { sm.textContent = 'That is more values than can be kept in one list. Remove an older report first.'; return; }
     var id = uid();
     keep.forEach(function (r) {
       var key = r.analyte || '', nm = r.name.trim().slice(0, 80);
@@ -443,8 +444,12 @@
     if (cur && cur.file) LabBinder.put(id, cur.file);
     persist();
     renderList();
-    msg('Saved ' + keep.length + ' value' + (keep.length > 1 ? 's' : '') + '. Remember to save your .kyh file to keep them.');
+    msg('Saved ' + keep.length + ' value' + (keep.length > 1 ? 's' : '') + '. Kept in this browser; save a .kylt copy to back them up.');
   }
 
-  renderList();
+  LabBinder.loadMeta().then(function (m) {
+    if (m && m.labs) { state.labs = m.labs; state.sex = m.sex || ''; }
+    sex = state.sex || null;
+    renderList();
+  });
 })();
