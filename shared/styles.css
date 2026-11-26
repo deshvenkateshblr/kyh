@@ -1692,3 +1692,16 @@ details.more-detail[open] > summary::before, details.rt-fine[open] > summary::be
 .lab-dump { width: 100%; height: 120px; font: 11px var(--mono); margin-top: 6px; box-sizing: border-box; }
 .lab-nums { grid-template-columns: 1fr 1fr !important; }
 .lab-nums input:nth-child(3) { grid-column: 1 / -1; }
+
+.lab-guess { list-style: none; padding: 0; margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; }
+.lab-guess li { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.lab-colfix { margin: 12px 0 14px; }
+.lab-sample { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.lab-sample th { text-align: left; font: 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.lab-sample td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+#lab-bands { position: absolute; left: 0; top: 0; pointer-events: none; margin: 8px 0 0 8px; }
+.lab-band { position: absolute; background: rgba(31, 122, 108, .14); border-left: 2px solid #1f7a6c; border-right: 2px solid rgba(31,122,108,.4); }
+.lab-band span { position: absolute; top: 2px; left: 2px; font: 700 10px var(--mono); background: #1f7a6c; color: #fff; padding: 1px 4px; white-space: nowrap; }
+.lab-band-value { background: rgba(224,144,58,.16); border-color: #e0903a; } .lab-band-value span { background: #e0903a; }
+.lab-band-unit { background: rgba(90,110,200,.14); border-color: #5a6ec8; } .lab-band-unit span { background: #5a6ec8; }
+.lab-band-ref { background: rgba(160,80,160,.13); border-color: #a050a0; } .lab-band-ref span { background: #a050a0; }

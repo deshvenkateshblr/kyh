@@ -175,9 +175,9 @@
         p = p.then(function () { return pdf.getPage(n); }).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push({ page: n, rows: LabParse.rowsFromItems(tc.items) }); });
       })(i);
       return p.then(function () {
-        var pk = LabParse.pickPages(pages), out = LabParse.extract(pages, sex, pk.sel);
-        var rows = out.tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; });
-        openReview({ rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores });
+        var pk = LabParse.pickPages(pages), g = LabParse.guessCols(pages, pk.sel), out = LabParse.extract(pages, sex, pk.sel, g && g.cols);
+        var rows = toRows(out.tests), r = { rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores, cols: g ? g.cols : null, how: g ? g.how : '' };
+        if (r.noText) openReview(r); else openGuess(r);
       });
     }).catch(function (err) {
       msg('This file could not be opened. If it is password protected, remove the password first, or type the values by hand.');
@@ -185,9 +185,79 @@
     });
   }
 
+  function toRows(tests) { return tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }); }
+
+  /* ================= first: what we think this report is ================= */
+  var ROLES = [['name', 'Test name'], ['value', 'Result'], ['unit', 'Unit'], ['ref', 'Range']];
+  function ranges(a) { a = a.slice().sort(function (x, y) { return x - y; }); var out = [], st = null, pv = null; a.forEach(function (n) { if (st === null) { st = pv = n; } else if (n === pv + 1) { pv = n; } else { out.push(st === pv ? '' + st : st + '–' + pv); st = pv = n; } }); if (st !== null) out.push(st === pv ? '' + st : st + '–' + pv); return out.join(', '); }
+  function openGuess(r) {
+    cur = r; cur.page = 1; cur.scale = 1; cur.active = -1; cur.mode = 'guess'; cur.tap = '';
+    var skipped = cur.pages.map(function (p) { return p.page; }).filter(function (n) { return cur.sel.indexOf(n) < 0; });
+    main.innerHTML = '<div class="lab-hero"><h1>Is this what your report looks like?</h1>' +
+      '<p class="lede">We looked at the report first and made a guess. Check it against the page. If something is off, fix it here; it takes a few taps and makes the whole report come out right.</p></div>' +
+      '<div class="lab-split"><div class="lab-left">' +
+      '<ul class="lab-guess" id="lab-guess"></ul><div id="lab-pages" class="lab-pages"></div>' +
+      '<div class="lab-colfix" id="lab-colfix"></div>' +
+      '<div class="lab-pagehead">The first rows, read this way</div><div id="lab-sample"></div>' +
+      '<div class="lab-binder-act"><button type="button" class="btn" id="lab-go">Yes, read the whole report this way</button> <button type="button" class="btn secondary" id="lab-cancel">Cancel</button></div>' +
+      '<p id="lab-save-msg" class="lab-msg" role="status"></p></div>' +
+      '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><div id="lab-bands"></div></div></div></div>';
+    paintGuess(); paintPages(); paintViewerBar();
+    showPage(cur.sel[0] || 1);
+    document.getElementById('lab-cancel').addEventListener('click', renderList);
+    document.getElementById('lab-go').addEventListener('click', function () { cur.mode = 'review'; openReview(cur); });
+    document.getElementById('lab-canvas').addEventListener('click', function (e) {
+      if (!cur.tap || !cur.vp) return;
+      var b = e.target.getBoundingClientRect(), pt = cur.vp.convertToPdfPoint(e.clientX - b.left, e.clientY - b.top);
+      cur.cols = cur.cols || { name: null, value: null, unit: null, ref: null, flag: null };
+      cur.cols[cur.tap] = pt[0]; cur.how = 'you'; cur.tap = '';
+      reread(); drawBands();
+    });
+    window.scrollTo(0, 0);
+  }
+  function reread() {
+    var out = LabParse.extract(cur.pages, sex, cur.sel, cur.cols);
+    cur.rows = toRows(out.tests); if (!cur.meta.date) cur.meta.date = out.meta.date; if (!cur.meta.lab) cur.meta.lab = out.meta.lab;
+    paintGuess();
+  }
+  function paintGuess() {
+    var g = document.getElementById('lab-guess'); if (!g) return;
+    var c = cur.cols || {}, skipped = cur.pages.map(function (p) { return p.page; }).filter(function (n) { return cur.sel.indexOf(n) < 0; });
+    var cn = ROLES.filter(function (x) { return c[x[0]] !== null && c[x[0]] !== undefined; }).sort(function (a, b) { return c[a[0]] - c[b[0]]; }).map(function (x) { return x[1]; });
+    g.innerHTML =
+      '<li><strong>Lab:</strong> ' + (cur.meta.lab ? esc(cur.meta.lab) : 'not recognised (that is fine)') + '</li>' +
+      '<li><strong>Sample taken:</strong> ' + (cur.meta.date ? esc(fmtDate(cur.meta.date)) : 'not found (you can add it next)') + '</li>' +
+      '<li><strong>Results are on page' + (cur.sel.length === 1 ? '' : 's') + ':</strong> ' + (cur.sel.length ? ranges(cur.sel) : 'none found') + (skipped.length ? '. We skipped ' + ranges(skipped) + ' (looks like summary or cover text).' : '.') + '</li>' +
+      '<li><strong>Each result row reads:</strong> ' + (cn.length ? esc(cn.join('  →  ')) : 'we could not find the columns, tap them below') + (cur.how === 'header' ? ' <span class="lab-when">(from the column headings)</span>' : cur.how === 'numbers' ? ' <span class="lab-when">(from where the numbers sit)</span>' : cur.how === 'you' ? ' <span class="lab-when">(as you set it)</span>' : '') + '</li>' +
+      '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + '</li>';
+    var cf = document.getElementById('lab-colfix');
+    cf.innerHTML = '<div class="lab-pages-t">Not right? Set a column, then tap it on the page</div><div class="lab-chips">' +
+      ROLES.map(function (x) { return '<button type="button" class="lab-chip' + (cur.tap === x[0] ? ' on' : '') + '" data-role="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+      (c.unit !== null && c.unit !== undefined ? '<button type="button" class="lab-chip" data-noncol="unit">No unit column</button>' : '') + '</div>' +
+      (cur.tap ? '<p class="lab-fine"><strong>Now tap anywhere in the ' + esc(ROLES.filter(function (x) { return x[0] === cur.tap; })[0][1]) + ' column on the page.</strong></p>' : '');
+    cf.querySelectorAll('[data-role]').forEach(function (b) { b.addEventListener('click', function () { cur.tap = cur.tap === b.getAttribute('data-role') ? '' : b.getAttribute('data-role'); paintGuess(); document.getElementById('lab-canvas').style.cursor = cur.tap ? 'crosshair' : ''; }); });
+    cf.querySelectorAll('[data-noncol]').forEach(function (b) { b.addEventListener('click', function () { cur.cols[b.getAttribute('data-noncol')] = null; reread(); drawBands(); }); });
+    var sm = document.getElementById('lab-sample');
+    sm.innerHTML = cur.rows.length ? '<table class="lab-sample"><thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Range</th><th></th></tr></thead><tbody>' +
+      cur.rows.slice(0, 8).map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.value) + '</td><td>' + esc(r.unit) + '</td><td>' + esc(r.ref) + '</td><td>' + badge(r.status) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="lab-fine">Nothing read yet. Set the columns above, or continue and type the values from the page.</p>';
+  }
+  function drawBands() {
+    var host = document.getElementById('lab-bands'); if (!host) return;
+    host.innerHTML = '';
+    if (cur.mode !== 'guess' || !cur.vp || !cur.cols) return;
+    var vp = cur.vp, h = vp.viewBox[3];
+    ROLES.forEach(function (x) {
+      var cx = cur.cols[x[0]]; if (cx === null || cx === undefined) return;
+      var w = x[0] === 'name' ? 110 : 54, r = vp.convertToViewportRectangle([x[0] === 'name' ? cx : cx - w / 2, 0, x[0] === 'name' ? cx + w : cx + w / 2, h]);
+      var d = document.createElement('div'); d.className = 'lab-band lab-band-' + x[0];
+      d.style.left = Math.min(r[0], r[2]) + 'px'; d.style.width = Math.abs(r[2] - r[0]) + 'px'; d.style.top = '0px'; d.style.height = Math.abs(r[3] - r[1]) + 'px';
+      d.innerHTML = '<span>' + x[1] + '</span>'; host.appendChild(d);
+    });
+  }
+
   /* ================= review view ================= */
   function openReview(r) {
-    cur = r; cur.page = 1; cur.scale = 1; cur.active = -1;
+    cur = r; cur.page = 1; cur.scale = 1; cur.active = -1; cur.mode = 'review';
     var d = r.meta.date || '';
     main.innerHTML = '<div class="lab-hero"><h1>Check the values</h1>' +
       '<p class="lede">' + (r.kind === 'pdf' ? (r.noText ? 'This PDF has no readable text (it is probably a scan). You can still see each page here and type the values in.' : 'Here is what we found. Tap a row to see it on the page, fix anything that is wrong, and untick what you do not want to keep.') : r.kind === 'image' ? 'Type the values from the photo. Nothing is read automatically from pictures.' : 'Type the values from your report.') + '</p></div>' +
@@ -218,9 +288,9 @@
       var n = +b.getAttribute('data-pg'), at = cur.sel.indexOf(n);
       if (at >= 0) cur.sel.splice(at, 1); else cur.sel.push(n);
       var manual = cur.rows.filter(function (r) { return !r.box; });
-      var out = LabParse.extract(cur.pages, sex, cur.sel);
-      cur.rows = out.tests.map(function (t) { return { page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }).concat(manual);
-      cur.active = -1; paintPages(); paintRows(); showPage(n);
+      var out = LabParse.extract(cur.pages, sex, cur.sel, cur.cols);
+      cur.rows = toRows(out.tests).concat(manual);
+      cur.active = -1; paintPages(); if (cur.mode === 'guess') paintGuess(); else paintRows(); showPage(n);
     }); });
   }
   /* what the parser sees on the current page, with name-like and id-like lines masked, so a layout can be shared for troubleshooting */
@@ -294,7 +364,7 @@
       cv.style.width = vp.width + 'px'; cv.style.height = vp.height + 'px';
       cur.vp = vp;
       return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null }).promise;
-    }).then(function () { highlight(box || null); });
+    }).then(function () { highlight(box || null); drawBands(); });
   }
   function highlight(box) {
     var hl = document.getElementById('lab-hl'); cur.hlBox = box;

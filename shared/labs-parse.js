@@ -199,8 +199,35 @@
     if (!sel.length) pages.forEach(function (p) { sel.push(p.page); });
     return { scores: sc, sel: sel };
   }
-  function extract(pages, sex, only) {
-    var meta = { date: '', lab: '' }, tests = [], cols = null, cat = '', last = null;
+  /* Guess where the columns are. Looks at rows that hold a result, then a unit or a range, and takes the typical x position of each role.
+     Uses the header row too when there is one. Returns { cols, how, anchors } or null. */
+  function med(a) { a = a.slice().sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : null; }
+  function guessCols(pages, only) {
+    var nm = [], vl = [], un = [], rf = [], fl = [], n = 0, hdr = null;
+    pages.forEach(function (pg) {
+      if (only && only.indexOf(pg.page) < 0) return;
+      pg.rows.forEach(function (r) {
+        if (!hdr) { var h = headerCols(r); if (h) hdr = h; }
+        var c = r.cells, vi = -1, i;
+        for (i = 1; i < c.length; i++) if (NUM.test(c[i].text.trim()) || QUAL.test(c[i].text.trim())) { vi = i; break; }
+        if (vi < 1) return;
+        var k = vi + 1, flag = null, unit = null, ref = null;
+        if (c[k] && /^(H|L|High|Low|HH|LL|\*)$/i.test(c[k].text.trim())) { flag = c[k]; k++; }
+        if (c[k] && UNIT_CELL.test(c[k].text.trim())) { unit = c[k]; k++; }
+        if (c[k] && (RANGE_IN.test(c[k].text) || QUAL.test(c[k].text.trim()))) ref = c[k];
+        if (!unit && !ref) return;
+        n++; nm.push(c[0].x); vl.push((c[vi].x + c[vi].x2) / 2);
+        if (unit) un.push((unit.x + unit.x2) / 2); if (ref) rf.push((ref.x + ref.x2) / 2); if (flag) fl.push((flag.x + flag.x2) / 2);
+      });
+    });
+    if (!hdr && n < 2) return null;
+    var cols = { name: med(nm), value: med(vl), unit: un.length >= Math.max(2, n * 0.4) ? med(un) : null, ref: rf.length >= Math.max(2, n * 0.4) ? med(rf) : null, flag: fl.length >= Math.max(2, n * 0.2) ? med(fl) : null };
+    if (hdr) { ['name', 'value', 'unit', 'ref', 'flag'].forEach(function (k) { if (hdr[k] !== null && hdr[k] !== undefined) cols[k] = hdr[k]; }); }
+    if (cols.value === null || cols.name === null) return null;
+    return { cols: cols, how: hdr ? 'header' : 'numbers', anchors: n };
+  }
+  function extract(pages, sex, only, fixed) {
+    var meta = { date: '', lab: '' }, tests = [], cols = fixed || null, cat = '', last = null;
     pages.forEach(function (pg) {
       var rows = pg.rows;
       rows.forEach(function (r) {
@@ -211,7 +238,7 @@
       if (only && only.indexOf(pg.page) < 0) return;
       rows.forEach(function (r, ri) {
         var hc = headerCols(r);
-        if (hc) { cols = hc; return; }
+        if (hc) { if (!fixed) cols = hc; return; }
         var line = r.cells.map(function (c) { return c.text; }).join(' ').trim();
         if (!line) return;
         if (last && Math.abs(last.y - r.y) < r.h * 3.2 && /^(male|female|desirable|optimal|borderline|normal|near optimal|high|very high|low|deficien\w*|insufficien\w*|sufficien\w*|prediabet\w*|diabet\w*|adult|child\w*)\s*:/i.test(line)) { last.ref = (last.ref + ' ' + line).trim(); last.y = r.y; return; }
@@ -242,6 +269,6 @@
     return { meta: meta, tests: tests };
   }
 
-  root.LabParse = { pageScore: pageScore, pickPages: pickPages, rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
+  root.LabParse = { guessCols: guessCols, pageScore: pageScore, pickPages: pickPages, rowsFromItems: rowsFromItems, extract: extract, statusFor: statusFor, matchAnalyte: matchAnalyte, norm: norm, isoDate: isoDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.LabParse;
 })(typeof window !== 'undefined' ? window : globalThis);
