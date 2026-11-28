@@ -24,7 +24,11 @@ def summary_pages(c, n=3):
         'Walk 30 minutes a day, 5 days a week, and reduce sugar. Vitamin D 18.2 is low; sunlight 20 minutes helps.',
         'Call us on 1800 000 0000 between 8 and 6 for any questions about this report.']
     for i in range(n):
-        c.setFont('Helvetica-Bold', 14); c.drawString(40, H - 60, 'Health Report - Summary page %d' % (i + 1))
+        c.setFont('Helvetica-Bold', 22 if i == 0 else 14); c.drawString(40, H - 60, 'Doctor Summary' if i == 0 else 'Health Report - Summary page %d' % (i + 1))
+        if i == 0:
+            c.setFont('Helvetica', 9)
+            for j, (t, v, u, r) in enumerate([('Haemoglobin', '12.1', 'g/dL', '13.0 - 17.0'), ('LDL Cholesterol', '142', 'mg/dL', '< 100'), ('HbA1c', '5.9', '%', '< 5.7')]):
+                y = H - 330 - j * 16; c.drawString(40, y, t); c.drawString(200, y, v); c.drawString(250, y, u); c.drawString(320, y, r)
         c.setFont('Helvetica', 10)
         for j, t in enumerate(texts): c.drawString(40, H - 100 - j * 22, t)
         c.showPage()
@@ -41,6 +45,28 @@ def style_f_echo(path):
       'Doppler: no significant gradient across any valve.',
       'Impression: Normal study. Good LV systolic function.']
     for i, t in enumerate(lines): c.drawString(40, H - 100 - i * 20, t)
+    c.save()
+
+def style_g_method(path):
+    c = canvas.Canvas(path, pagesize=A4)
+    c.setFont('Helvetica-Bold', 13); c.drawString(40, H - 50, 'Sample Diagnostics - Biochemistry')
+    c.setFont('Helvetica', 9); c.drawString(40, H - 68, 'Collection Date : 20/03/2026')
+    heads = [(40, 'Test Name'), (230, 'Result'), (285, 'Unit'), (340, 'Bio. Ref. Interval'), (450, 'Method')]
+    c.setFont('Helvetica-Bold', 9)
+    for x, t in heads: c.drawString(x, H - 100, t)
+    c.line(40, H - 104, 560, H - 104)
+    c.setFont('Helvetica-Bold', 10); c.drawString(40, H - 122, 'LIVER FUNCTION TEST')
+    c.setFont('Helvetica', 9)
+    rows = [('Bilirubin - Total', '0.8', 'mg/dL', '0.3 - 1.2', 'Diazo'), ('SGPT (ALT)', '46', 'U/L', '< 41', 'Spectrophotometry'), ('Alkaline Phosphatase', '98', 'U/L', '40 - 129', 'Spectrophotometry'),
+            ('Albumin', '4.4', 'g/dL', '3.5 - 5.2', 'BCG'), ('Globulin', '2.6', 'g/dL', '2.0 - 3.5', 'Calculated')]
+    for i, row in enumerate(rows):
+        y = H - 142 - i * 18
+        for (x, _), v in zip(heads, row): c.drawString(x, y, v)
+    c.setFont('Helvetica-Bold', 10); c.drawString(40, H - 262, 'URINE EXAMINATION')
+    c.setFont('Helvetica', 9)
+    for i, row in enumerate([('Pus Cells', '2', '/hpf', '0 - 5', 'Microscopy'), ('Specific Gravity', '1.015', '', '1.005 - 1.030', 'DHSS')]):
+        y = H - 282 - i * 18
+        for (x, _), v in zip(heads, row): c.drawString(x, y, v)
     c.save()
 
 def style_a(path, lead=0):
@@ -132,6 +158,7 @@ def style_d(path):
 
 style_a(os.path.join(OUT, 'style_a_table.pdf'))
 style_a(os.path.join(OUT, 'style_e_summary_first.pdf'), lead=3)
+style_g_method(os.path.join(OUT, 'style_g_method.pdf'))
 style_f_echo(os.path.join(OUT, 'style_f_echo.pdf'))
 style_b(os.path.join(OUT, 'style_b_flags.pdf'))
 style_c(os.path.join(OUT, 'style_c_plain.pdf'))

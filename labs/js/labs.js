@@ -57,7 +57,7 @@
           if (a) note = (r.s === 'low' ? a.low : r.s === 'high' || r.s === 'borderline' ? a.high : '');
           html += '<article class="lab-card"><div class="lab-card-top"><strong>' + esc(a ? a.name : r.n) + '</strong>' + badge(r.s) + '</div>' +
             '<div class="lab-val">' + esc(r.v) + ' <span class="lab-unit">' + esc(r.u || '') + '</span></div>' +
-            '<div class="lab-ref">' + (r.f ? 'Range on report: ' + esc(r.f) + (r.b ? ' (' + esc(r.b) + ')' : '') : 'No range on report') + ' &middot; ' + esc(fmtDate(r.d)) + '</div>' +
+            '<div class="lab-ref">' + (r.f ? 'Range on report: ' + esc(r.f) + (r.b ? ' (' + esc(r.b) + ')' : '') : 'No range on report') + (r.m ? ' &middot; ' + esc(r.m) : '') + ' &middot; ' + esc(fmtDate(r.d)) + '</div>' +
             (it.list.length > 1 ? '<div class="lab-trend">Earlier: ' + it.list.slice(1, 5).map(function (e) { return esc(e.v) + ' (' + esc(fmtDate(e.d)) + ')'; }).join(' &middot; ') + '</div>' : '') +
             (a ? '<details class="lab-more"><summary>What this is</summary><p>' + esc(a.what) + '</p>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</details>' : '') + '</article>';
         });
@@ -148,7 +148,7 @@
       var res = (k.labs.results || []).filter(function (x) { return ids[x.r]; });
       if (L.results.length + res.length > MAX_RESULTS) { msg('That bundle has more values than can be kept in one list.'); return; }
       add.forEach(function (r) { L.reports.push({ id: String(r.id).slice(0, 30), date: String(r.date || '').slice(0, 10), lab: String(r.lab || '').slice(0, 60), n: +r.n || 0, t: String(r.t || '').slice(0, 120) }); });
-      res.forEach(function (x) { L.results.push({ r: x.r, p: String(x.p || '').slice(0, 40), k: String(x.k || '').slice(0, 40), n: String(x.n || '').slice(0, 80), v: String(x.v || '').slice(0, 30), u: String(x.u || '').slice(0, 30), f: String(x.f || '').slice(0, 120), s: String(x.s || '').slice(0, 12), b: String(x.b || '').slice(0, 40), d: String(x.d || '').slice(0, 10) }); });
+      res.forEach(function (x) { L.results.push({ r: x.r, p: String(x.p || '').slice(0, 40), m: String(x.m || '').slice(0, 60), k: String(x.k || '').slice(0, 40), n: String(x.n || '').slice(0, 80), v: String(x.v || '').slice(0, 30), u: String(x.u || '').slice(0, 30), f: String(x.f || '').slice(0, 120), s: String(x.s || '').slice(0, 12), b: String(x.b || '').slice(0, 40), d: String(x.d || '').slice(0, 10) }); });
       return Promise.all(Object.keys(k.files).filter(function (id) { return ids[id]; }).map(function (id) { return LabBinder.put(id, k.files[id]); })).then(function () {
         persist(); renderList();
         msg('Added ' + add.length + ' report' + (add.length === 1 ? '' : 's') + ' from the bundle' + (add.length < (k.labs.reports || []).length ? ' (the rest were already here)' : '') + '. They are kept in this browser; save a .kylt copy to back them up.');
@@ -179,7 +179,7 @@
         var pk = LabParse.pickPages(pages), g = LabParse.guessCols(pages, pk.sel), out = LabParse.extract(pages, sex, pk.sel, g && g.cols);
         var rows = toRows(out.tests), r = { rows: rows, meta: out.meta, kind: 'pdf', pdf: pdf, noText: !rows.length, file: keep, pages: pages, sel: pk.sel, scores: pk.scores, cols: g ? g.cols : null, how: g ? g.how : '', cls: LabParse.classifyPages(pages) };
         r.noText = !rows.length && !r.cls.some(function (c) { return c.kind === 'findings'; });
-        if (r.noText) openReview(r); else openGuess(r);
+        if (r.noText) openReview(r); else if (r.sel.length) openWalk(r); else openGuess(r);
       });
     }).catch(function (err) {
       msg('This file could not be opened. If it is password protected, remove the password first, or type the values by hand.');
@@ -200,7 +200,7 @@
   }
   var KIND_LABEL = { results: 'a table of results', findings: 'a written report', text: 'text only (summary or cover)' };
   function panelOf(t) { var p = (t.analyte && LabParse.topicOfAnalyte(t.analyte)) || ''; if (!p && t.category) p = t.category.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); }).slice(0, 40); return p; }
-  function toRows(tests) { return tests.map(function (t) { return { panel: panelOf(t), page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }); }
+  function toRows(tests) { return tests.map(function (t) { return { panel: panelOf(t), method: t.method || '', page: t.page, box: t.box, name: t.name, analyte: t.analyte, value: t.value, unit: t.unit, ref: t.ref, flag: t.flag, status: t.status, band: t.band, on: true }; }); }
 
   /* ================= first: what we think this report is ================= */
   var ROLES = [['name', 'Test name'], ['value', 'Result'], ['unit', 'Unit'], ['ref', 'Range']];
@@ -249,7 +249,7 @@
     var nRows = cur.rows.filter(function (r) { return r.page === c.page; }).length, why;
     if (c.kind === 'results') why = (c.topics.length ? 'Looks like <strong>' + esc(c.topics.join(', ')) + '</strong>. ' : 'A table of results, but we could not name the panel. ') + 'Reading <strong>' + nRows + '</strong> result' + (nRows === 1 ? '' : 's') + ' from this page.';
     else if (c.kind === 'findings') why = 'Looks like <strong>' + esc(c.topics[0] || 'a written report') + '</strong>. It is words, not a table of numbers, so no values are read from it.';
-    else why = c.user ? 'You marked this page as a summary or cover. Nothing is read from it.' : 'No table of results found here (' + c.table + ' line' + (c.table === 1 ? '' : 's') + ' with a number and a unit or range). Looks like summary or cover text, so it is skipped.';
+    else why = c.reason && !c.user ? esc(c.reason) + '. Treated as a summary or cover, so nothing is read from it.' : c.user ? 'You marked this page as a summary or cover. Nothing is read from it.' : 'No table of results found here (' + c.table + ' line' + (c.table === 1 ? '' : 's') + ' with a number and a unit or range). Looks like summary or cover text, so it is skipped.';
     host.className = 'lab-thispage lab-tp-' + c.kind;
     host.innerHTML = (cur.flash ? '<div class="lab-flash">&#10003; ' + esc(cur.flash) + '</div>' : '') +
       '<div class="lab-tp-head"><strong>Page ' + c.page + ' of ' + cur.pages.length + '</strong><span class="lab-pill lab-pill-' + c.kind + '">' + KIND_PILL[c.kind] + (c.user ? ' &middot; set by you' : '') + '</span></div>' +
@@ -278,7 +278,7 @@
   }
   function reread() {
     var out = LabParse.extract(cur.pages, sex, cur.sel, cur.cols);
-    cur.rows = toRows(out.tests); if (!cur.meta.date) cur.meta.date = out.meta.date; if (!cur.meta.lab) cur.meta.lab = out.meta.lab;
+    cur.rows = toRows(out.tests); if (cur.walk) cur.walk.ok = {}; if (!cur.meta.date) cur.meta.date = out.meta.date; if (!cur.meta.lab) cur.meta.lab = out.meta.lab;
     paintGuess();
   }
   function paintGuess() {
@@ -292,7 +292,7 @@
       '<li><strong>Each result row reads:</strong> ' + (cn.length ? esc(cn.join('  →  ')) : 'we could not find the columns, tap them below') + (cur.how === 'header' ? ' <span class="lab-when">(from the column headings)</span>' : cur.how === 'numbers' ? ' <span class="lab-when">(from where the numbers sit)</span>' : cur.how === 'you' ? ' <span class="lab-when">(as you set it)</span>' : '') + '</li>' +
       '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + (cur.rows.length ? ' (' + esc(foundByTopic()) + ')' : '') + '</li>' +
       '<li><strong>What each page is:</strong><ul class="lab-pagelist">' + (cur.cls || []).map(function (c) {
-        return '<li class="' + (c.page === cur.page ? 'cur' : '') + '"><button type="button" class="refine-back" data-showpg="' + c.page + '">Page ' + c.page + '</button>: ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + (c.user ? ' <span class="lab-when">(you set this)</span>' : '') +
+        return '<li class="' + (c.page === cur.page ? 'cur' : '') + '"><button type="button" class="refine-back" data-showpg="' + c.page + '">Page ' + c.page + '</button>: ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + (c.reason && c.kind === 'text' ? ' <span class="lab-when">(' + esc(c.reason) + ')</span>' : '') + (c.user ? ' <span class="lab-when">(you set this)</span>' : '') +
           '<select class="lab-kind" data-kind="' + c.page + '" aria-label="What is page ' + c.page + '"><option value="results"' + (c.kind === 'results' ? ' selected' : '') + '>Results table</option><option value="text"' + (c.kind === 'text' ? ' selected' : '') + '>Summary or cover, skip it</option><option value="findings"' + (c.kind === 'findings' ? ' selected' : '') + '>Written report</option></select></li>'; }).join('') + '</ul></li>';
     g.querySelectorAll('[data-kind]').forEach(function (sel) { sel.addEventListener('change', function () { setKind(+sel.getAttribute('data-kind'), sel.value); }); });
     g.querySelectorAll('[data-showpg]').forEach(function (b) { b.addEventListener('click', function () { showPage(+b.getAttribute('data-showpg')); }); });
@@ -352,30 +352,27 @@
     window.scrollTo(0, 0);
   }
 
-  /* ================= page by page: panel, test names, values ================= */
-  function normUnit(u) { return String(u || '').toLowerCase().replace(/\s+/g, '').replace(/µ|mcg/g, 'u').replace(/^gm\//, 'g/').replace(/^gms\//, 'g/').replace(/^thou\/cumm$|^10\^3\/ul$|^x10\^3\/ul$/, '10^3/ul'); }
+  /* ================= page by page: tick each row (or the whole table) against the page ================= */
+  function normUnit(u) { return String(u || '').toLowerCase().replace(/\s+/g, '').replace(/µ|mcg/g, 'u').replace(/^gms?\//, 'g/').replace(/^thou\/cumm$|^10\^3\/ul$|^x10\^3\/ul$/, '10^3/ul'); }
   function rowIssues(r) {
     var a = r.analyte ? analyteByKey(r.analyte) : null, out = [];
     if (!String(r.name).trim()) out.push('No test name.');
-    else if (!a) out.push('We do not know this test. Check the name against the page; you can keep it as it is.');
+    else if (!a) out.push('Not a test we know. Check the spelling; you can keep it as printed.');
     if (!String(r.value).trim()) out.push('No result.');
-    if (a && a.unit && r.unit && normUnit(r.unit) !== normUnit(a.unit)) out.push('The unit differs from the usual one (' + a.unit + '). Check it on the page.');
-    if (!String(r.ref).trim()) out.push('No printed range found, so no status is given.');
+    if (a && a.unit && r.unit && normUnit(r.unit) !== normUnit(a.unit)) out.push('The unit differs from the usual one (' + a.unit + ').');
+    if (!String(r.ref).trim()) out.push('No printed range, so no status is given.');
     return out;
   }
-  function attrHtml(r) {
-    var a = r.analyte ? analyteByKey(r.analyte) : null, is = rowIssues(r);
-    return (a ? '<span class="lab-known">&#10003; Known test: <strong>' + esc(a.name) + '</strong> &middot; ' + esc(a.group) + (a.unit ? ' &middot; usual unit ' + esc(a.unit) : '') + '</span>' : '<span class="lab-unknown">Not a test we know</span>') +
-      is.filter(function (x) { return !/^We do not know/.test(x); }).map(function (x) { return '<span class="lab-issue">' + esc(x) + '</span>'; }).join('');
-  }
-  function walkPage() { return cur.walk.order[cur.walk.i]; }
-  function pageRowIdx(n) { var out = []; cur.rows.forEach(function (r, i) { if (r.page === n) out.push(i); }); return out; }
+  function walkOrder() { return cur.sel.slice().sort(function (a, b) { return a - b; }); }
+  function activeRows(n) { var out = []; cur.rows.forEach(function (r, i) { if (r.page === n) out.push(i); }); return out; }
   function openWalk(r) {
+    var prev = r.walk;
     cur = r; cur.scale = 1; cur.active = -1; cur.mode = 'walk';
-    cur.walk = { order: r.sel.slice().sort(function (a, b) { return a - b; }), i: 0, ok: {}, stage: 'page' };
-    main.innerHTML = '<div class="lab-hero"><h1 id="lab-walk-h">Check each results page</h1><p class="lede" id="lab-walk-lede"></p></div>' +
+    var order = walkOrder();
+    cur.walk = { page: prev && order.indexOf(prev.page) >= 0 ? prev.page : order[0], ok: prev ? prev.ok : {}, stage: 'page' };
+    main.innerHTML = '<div class="lab-hero lab-hero-tight"><h1 id="lab-walk-h">Check page</h1><p class="lede" id="lab-walk-lede"></p></div>' +
       '<div class="lab-steps" id="lab-steps"></div>' +
-      '<div class="lab-split"><div class="lab-left" id="lab-walk-left"></div>' +
+      '<div class="lab-split lab-split-walk"><div class="lab-left" id="lab-walk-left"></div>' +
       '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><div id="lab-hl" class="lab-hl" hidden></div></div></div></div>' +
       '<datalist id="lab-names">' + (window.LAB_ANALYTES || []).map(function (a) { return '<option value="' + esc(a.name) + '">'; }).join('') + '</datalist>' +
       '<datalist id="lab-panels">' + (window.LAB_TOPICS || []).filter(function (t) { return t.kind === 'values'; }).map(function (t) { return '<option value="' + esc(t.name) + '">'; }).join('') + '</datalist>';
@@ -386,95 +383,123 @@
     paintWalk(); window.scrollTo(0, 0);
   }
   function paintSteps() {
-    var w = cur.walk, host = document.getElementById('lab-steps');
-    host.innerHTML = w.order.map(function (n, i) { var st = w.stage === 'page' && i === w.i ? ' cur' : (w.ok[n] ? ' done' : ''); return '<button type="button" class="lab-step' + st + '" data-step="' + i + '">Page ' + n + (w.ok[n] ? ' &#10003;' : '') + '</button>'; }).join('') +
+    var w = cur.walk, order = walkOrder(), host = document.getElementById('lab-steps');
+    host.innerHTML = '<span class="lab-when">Results pages:</span>' + order.map(function (n) { var st = w.stage === 'page' && n === w.page ? ' cur' : (w.ok[n] ? ' done' : ''); return '<button type="button" class="lab-step' + st + '" data-step="' + n + '" title="Page ' + n + '">' + n + (w.ok[n] ? '&#10003;' : '') + '</button>'; }).join('') +
       '<span class="lab-step-end' + (w.stage === 'finish' ? ' cur' : '') + '">Save</span>';
-    host.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { cur.walk.stage = 'page'; cur.walk.i = +b.getAttribute('data-step'); paintWalk(); }); });
+    host.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { cur.walk.stage = 'page'; cur.walk.page = +b.getAttribute('data-step'); paintWalk(); }); });
   }
+  function nextAfter(n) { var o = walkOrder(), i = o.indexOf(n); return i >= 0 && i < o.length - 1 ? o[i + 1] : 0; }
   function paintWalk() {
     var w = cur.walk, host = document.getElementById('lab-walk-left'); paintSteps();
     if (w.stage === 'finish') return paintFinish();
-    var n = walkPage(), idx = pageRowIdx(n), panels = {}, order = [];
-    document.getElementById('lab-walk-h').textContent = 'Check page ' + n + ' (' + (w.i + 1) + ' of ' + w.order.length + ')';
-    document.getElementById('lab-walk-lede').innerHTML = 'Look at the page on the right and check three things in order: the <strong>panel</strong> each group of tests belongs to, each <strong>test name</strong>, and its <strong>result, unit and range</strong>. Tap a row to see it on the page. Fix anything that differs, then confirm the page.';
-    idx.forEach(function (i) { var pn = cur.rows[i].panel || 'No panel'; if (!panels[pn]) { panels[pn] = []; order.push(pn); } panels[pn].push(i); });
-    var nIssue = idx.filter(function (i) { return cur.rows[i].on && rowIssues(cur.rows[i]).length; }).length;
+    var order = walkOrder(); if (!order.length) { openGuess(cur); return; }
+    if (order.indexOf(w.page) < 0) w.page = order[0];
+    var n = w.page, idx = activeRows(n), panels = {}, pord = [], pos = order.indexOf(n);
+    document.getElementById('lab-walk-h').textContent = 'Check page ' + n;
+    document.getElementById('lab-walk-lede').textContent = 'Results page ' + (pos + 1) + ' of ' + order.length + '. Compare each row with the page on the right, tick the ones that match, fix any that do not, then confirm the page.';
+    idx.forEach(function (i) { var pn = cur.rows[i].panel || 'No panel'; if (!panels[pn]) { panels[pn] = []; pord.push(pn); } panels[pn].push(i); });
+    var live = idx.filter(function (i) { return cur.rows[i].on; }), nTick = live.filter(function (i) { return cur.rows[i].ok; }).length;
     var needSex = !sex && cur.rows.some(function (r) { return /\b(fe)?male\b/i.test(r.ref || ''); });
+    var skipped = cur.cls ? cur.cls.filter(function (c) { return c.kind !== 'results'; }).length : 0;
     var html = (cur.flash ? '<div class="lab-flash">&#10003; ' + esc(cur.flash) + '</div>' : '') +
-      (needSex ? '<div class="lab-sexask"><strong>Some ranges on this report depend on sex.</strong> This report is for: <button type="button" class="lab-segbtn" data-sex="Male">Male</button> <button type="button" class="lab-segbtn" data-sex="Female">Female</button><span class="lab-when"> It is remembered, and you can change it on the main page.</span></div>' : '') +
-      '<div class="lab-walk-sum"><strong>' + idx.length + '</strong> test' + (idx.length === 1 ? '' : 's') + ' found on this page in <strong>' + order.length + '</strong> panel' + (order.length === 1 ? '' : 's') + (nIssue ? '. <span class="lab-issue-count">' + nIssue + ' to look at</span>' : '. Nothing looks odd.') + '</div>';
-    order.forEach(function (pn, gi) {
-      html += '<div class="lab-panelbox"><div class="lab-panelhead"><span class="intake-label">1. Panel</span><input type="text" class="lab-panel-in" data-pgroup="' + gi + '" list="lab-panels" value="' + esc(pn === 'No panel' ? '' : pn) + '" placeholder="Name this panel" aria-label="Panel name" maxlength="40"><span class="lab-when">' + panels[pn].length + ' test' + (panels[pn].length === 1 ? '' : 's') + '</span></div>';
+      (needSex ? '<div class="lab-sexask"><strong>Some ranges depend on sex.</strong> This report is for: <button type="button" class="lab-segbtn" data-sex="Male">Male</button><button type="button" class="lab-segbtn" data-sex="Female">Female</button></div>' : '') +
+      '<div class="lab-toolbar"><span><strong>' + idx.length + '</strong> test' + (idx.length === 1 ? '' : 's') + ', ' + pord.length + ' panel' + (pord.length === 1 ? '' : 's') + '</span>' +
+      '<span class="lab-tb-act"><button type="button" class="refine-back" id="lab-skip">Not a results page? Skip it</button><button type="button" class="refine-back" id="lab-pagecheck">All pages and columns (' + skipped + ' skipped)</button></span></div>';
+    html += '<div class="lab-vt-wrap"><table class="lab-vt"><thead><tr><th class="c-ok"><input type="checkbox" id="lab-tick-all" aria-label="Tick every row on this page"' + (live.length && nTick === live.length ? ' checked' : '') + '></th><th class="c-name">Test</th><th class="c-val">Result</th><th class="c-unit">Unit</th><th class="c-ref">Range on report</th><th class="c-met">Method</th><th class="c-st">Status</th><th class="c-x"></th></tr></thead><tbody>';
+    pord.forEach(function (pn, gi) {
+      html += '<tr class="lab-vt-panel"><td colspan="8"><span class="intake-label">Panel</span> <input type="text" class="lab-panel-in" data-pgroup="' + gi + '" list="lab-panels" value="' + esc(pn === 'No panel' ? '' : pn) + '" placeholder="Name this panel" aria-label="Panel name" maxlength="40"> <button type="button" class="refine-back" data-tickpanel="' + gi + '">Tick this panel</button></td></tr>';
       panels[pn].forEach(function (i) {
-        var r = cur.rows[i];
-        html += '<div class="lab-row' + (r.on ? '' : ' off') + (i === cur.active ? ' active' : '') + '" data-i="' + i + '">' +
-          '<label class="lab-keep"><input type="checkbox" data-f="on"' + (r.on ? ' checked' : '') + ' aria-label="Keep this value"></label>' +
-          '<div class="lab-fields"><span class="intake-label">2. Test name</span><input type="text" data-f="name" value="' + esc(r.name) + '" list="lab-names" placeholder="Test name" aria-label="Test name">' +
-          '<div class="lab-attr" data-attr>' + attrHtml(r) + '</div>' +
-          '<span class="intake-label">3. Result, unit, range on the report</span><div class="lab-nums"><input type="text" data-f="value" value="' + esc(r.value) + '" placeholder="Result" inputmode="decimal" aria-label="Result">' +
-          '<input type="text" data-f="unit" value="' + esc(r.unit) + '" placeholder="Unit" aria-label="Unit">' +
-          '<input type="text" data-f="ref" value="' + esc(r.ref) + '" placeholder="Range on report" aria-label="Range printed on the report"></div></div>' +
-          '<div class="lab-st" data-st>' + badge(r.status) + '</div></div>';
+        var r = cur.rows[i], iss = rowIssues(r);
+        html += '<tr class="lab-vt-row' + (r.on ? '' : ' off') + (r.ok && r.on ? ' ok' : '') + (iss.length && !r.ok && r.on ? ' warn' : '') + (i === cur.active ? ' active' : '') + '" data-i="' + i + '">' +
+          '<td class="c-ok"><input type="checkbox" data-f="ok"' + (r.ok ? ' checked' : '') + (r.on ? '' : ' disabled') + ' aria-label="This row matches the page"></td>' +
+          '<td class="c-name"><input type="text" data-f="name" value="' + esc(r.name) + '" title="' + esc(r.name) + '" list="lab-names" aria-label="Test name">' + (iss.length ? '<span class="lab-warn" data-warn title="' + esc(iss.join(' ')) + '">&#9888;</span>' : '<span class="lab-warn" data-warn></span>') + '</td>' +
+          '<td class="c-val"><input type="text" data-f="value" value="' + esc(r.value) + '" inputmode="decimal" aria-label="Result"></td>' +
+          '<td class="c-unit"><input type="text" data-f="unit" value="' + esc(r.unit) + '" aria-label="Unit"></td>' +
+          '<td class="c-ref"><input type="text" data-f="ref" value="' + esc(r.ref) + '" aria-label="Range printed on the report"></td>' +
+          '<td class="c-met"><input type="text" data-f="method" value="' + esc(r.method || '') + '" title="' + esc(r.method || '') + '" aria-label="Method" placeholder="-"></td>' +
+          '<td class="c-st" data-st>' + badge(r.status) + '</td>' +
+          '<td class="c-x"><button type="button" class="lab-x" data-drop="' + i + '" aria-label="' + (r.on ? 'Remove this row' : 'Restore this row') + '" title="' + (r.on ? 'Remove this row' : 'Restore') + '">' + (r.on ? '&times;' : '&#8634;') + '</button></td></tr>';
       });
-      html += '</div>';
     });
-    if (!idx.length) html += '<p class="lab-fine">Nothing was read from this page. Add the values you can see, or go back and mark the page as a summary.</p>';
-    html += '<button type="button" class="btn secondary" id="lab-add-row">+ Add a test I can see on the page</button>' +
-      '<div class="lab-binder-act"><button type="button" class="btn secondary" id="lab-walk-back">' + (w.i === 0 ? '&larr; Back to the page check' : '&larr; Previous page') + '</button> ' +
-      '<button type="button" class="btn" id="lab-walk-ok">' + (w.i === w.order.length - 1 ? 'Confirm page ' + n + ' and review' : 'Confirm page ' + n + ' and go to the next') + ' &rarr;</button></div>';
+    if (!idx.length) html += '<tr><td colspan="8" class="lab-fine">Nothing was read from this page. Add the values you can see, or skip the page.</td></tr>';
+    html += '</tbody></table></div>' +
+      '<button type="button" class="btn secondary" id="lab-add-row">+ Add a test I can see on the page</button>' +
+      '<div class="lab-signoff"><span id="lab-count">' + nTick + ' of ' + live.length + ' ticked</span> <button type="button" class="btn secondary" id="lab-tick-btn">Tick all</button> ' +
+      '<button type="button" class="btn secondary" id="lab-walk-back">&larr; ' + (pos === 0 ? 'Page check' : 'Previous') + '</button> ' +
+      '<button type="button" class="btn" id="lab-walk-ok"' + (live.length && nTick < live.length ? ' disabled' : '') + '>' + (pos === order.length - 1 ? 'Confirm page ' + n + ' and review' : 'Confirm page ' + n + ' and continue') + ' &rarr;</button></div>';
     host.innerHTML = html;
     if (cur.flash) { var f = cur.flash; setTimeout(function () { if (cur && cur.flash === f) { cur.flash = ''; var el = document.querySelector('#lab-walk-left .lab-flash'); if (el) el.remove(); } }, 4000); }
-    host.querySelectorAll('.lab-row').forEach(function (row) {
+
+    function recount() {
+      var lv = activeRows(n).filter(function (i) { return cur.rows[i].on; }), t = lv.filter(function (i) { return cur.rows[i].ok; }).length;
+      document.getElementById('lab-count').textContent = t + ' of ' + lv.length + ' ticked';
+      var okb = document.getElementById('lab-walk-ok'); okb.disabled = !!lv.length && t < lv.length;
+      document.getElementById('lab-tick-all').checked = !!lv.length && t === lv.length;
+    }
+    function tickAll(v) { activeRows(n).forEach(function (i) { if (cur.rows[i].on) cur.rows[i].ok = v; }); paintWalk(); }
+    host.querySelectorAll('.lab-vt-row').forEach(function (row) {
       var i = +row.getAttribute('data-i');
       row.addEventListener('input', function (e) {
-        var f = e.target.getAttribute('data-f'); if (!f) return;
-        var r = cur.rows[i];
-        if (f === 'on') { r.on = e.target.checked; row.classList.toggle('off', !r.on); return; }
-        r[f] = e.target.value; delete cur.walk.ok[n];
+        var f = e.target.getAttribute('data-f'); if (!f) return; var r = cur.rows[i];
+        if (f === 'ok') { r.ok = e.target.checked; row.classList.toggle('ok', r.ok); row.classList.toggle('warn', !r.ok && rowIssues(r).length > 0); recount(); return; }
+        r[f] = e.target.value; r.ok = true; delete cur.walk.ok[n];
         if (f === 'name') { var a = LabParse.matchAnalyte(r.name); r.analyte = a ? a.key : ''; if (a && !r.unit) r.unit = a.unit; if (a && !r.panel) r.panel = LabParse.topicOfAnalyte(a.key); }
         var st = LabParse.statusFor(r.value, r.ref, sex, r.flag); r.status = st.status; r.band = st.band;
-        row.querySelector('[data-st]').innerHTML = badge(r.status); row.querySelector('[data-attr]').innerHTML = attrHtml(r);
+        var iss = rowIssues(r); row.querySelector('[data-st]').innerHTML = badge(r.status); var wn = row.querySelector('[data-warn]'); wn.innerHTML = iss.length ? '&#9888;' : ''; wn.title = iss.join(' ');
+        row.querySelector('[data-f=ok]').checked = true; row.classList.add('ok'); row.classList.remove('warn'); recount();
       });
-      row.addEventListener('click', function (e) { if (e.target.tagName === 'INPUT') { if (e.target.getAttribute('data-f') !== 'on') focusRow(i, false); return; } focusRow(i, true); });
+      row.addEventListener('click', function (e) { if (e.target.tagName === 'BUTTON') return; if (e.target.tagName === 'INPUT') { if (e.target.getAttribute('data-f') !== 'ok') focusRow(i, false); return; } focusRow(i, true); });
     });
+    host.querySelectorAll('[data-drop]').forEach(function (b) { b.addEventListener('click', function () { var r = cur.rows[+b.getAttribute('data-drop')]; r.on = !r.on; if (!r.on) r.ok = false; paintWalk(); }); });
     host.querySelectorAll('[data-sex]').forEach(function (b) { b.addEventListener('click', function () {
       state.sex = b.getAttribute('data-sex'); sex = state.sex; persist();
       cur.rows.forEach(function (r) { var st = LabParse.statusFor(r.value, r.ref, sex, r.flag); r.status = st.status; r.band = st.band; });
       cur.flash = 'Ranges set for ' + sex.toLowerCase() + '.'; paintWalk();
     }); });
     host.querySelectorAll('[data-pgroup]').forEach(function (inp) { inp.addEventListener('change', function () {
-      var group = panels[order[+inp.getAttribute('data-pgroup')]]; group.forEach(function (i) { cur.rows[i].panel = inp.value.trim().slice(0, 40); }); delete cur.walk.ok[n]; paintWalk();
+      panels[pord[+inp.getAttribute('data-pgroup')]].forEach(function (i) { cur.rows[i].panel = inp.value.trim().slice(0, 40); }); paintWalk();
     }); });
-    document.getElementById('lab-add-row').addEventListener('click', function () { cur.rows.push({ panel: order[order.length - 1] && order[order.length - 1] !== 'No panel' ? order[order.length - 1] : '', page: n, box: null, name: '', analyte: '', value: '', unit: '', ref: '', flag: '', status: '', band: '', on: true }); paintWalk(); });
-    document.getElementById('lab-walk-back').addEventListener('click', function () { if (w.i === 0) { cur.mode = 'guess'; openGuess(cur); } else { w.i--; paintWalk(); } });
+    host.querySelectorAll('[data-tickpanel]').forEach(function (b) { b.addEventListener('click', function () { panels[pord[+b.getAttribute('data-tickpanel')]].forEach(function (i) { if (cur.rows[i].on) cur.rows[i].ok = true; }); paintWalk(); }); });
+    document.getElementById('lab-tick-all').addEventListener('change', function (e) { tickAll(e.target.checked); });
+    document.getElementById('lab-tick-btn').addEventListener('click', function () { tickAll(true); });
+    document.getElementById('lab-add-row').addEventListener('click', function () { cur.rows.push({ panel: pord.length && pord[pord.length - 1] !== 'No panel' ? pord[pord.length - 1] : '', method: '', page: n, box: null, name: '', analyte: '', value: '', unit: '', ref: '', flag: '', status: '', band: '', on: true, ok: false }); paintWalk(); });
+    document.getElementById('lab-skip').addEventListener('click', function () {
+      var nx = nextAfter(n) || (pos > 0 ? order[pos - 1] : 0);
+      var c = cur.cls.filter(function (x) { return x.page === n; })[0]; if (c) { c.kind = 'text'; c.user = true; }
+      var at = cur.sel.indexOf(n); if (at >= 0) cur.sel.splice(at, 1);
+      delete w.ok[n]; cur.flash = 'Page ' + n + ' skipped (not a results page).';
+      if (nx) { w.page = nx; paintWalk(); } else { openGuess(cur); }
+    });
+    document.getElementById('lab-pagecheck').addEventListener('click', function () { cur.mode = 'guess'; openGuess(cur); });
+    document.getElementById('lab-walk-back').addEventListener('click', function () { if (pos === 0) { cur.mode = 'guess'; openGuess(cur); } else { w.page = order[pos - 1]; paintWalk(); } });
     document.getElementById('lab-walk-ok').addEventListener('click', function () {
-      var keep = idx.filter(function (i) { return cur.rows[i].on && cur.rows[i].name.trim() && String(cur.rows[i].value).trim(); }).length;
-      w.ok[n] = true; cur.flash = 'Page ' + n + ' confirmed (' + keep + ' value' + (keep === 1 ? '' : 's') + ').';
-      if (w.i === w.order.length - 1) w.stage = 'finish'; else { w.i++; cur.flash += ' Now page ' + w.order[w.i] + '.'; }
+      var kept = live.filter(function (i) { return cur.rows[i].name.trim() && String(cur.rows[i].value).trim(); }).length;
+      w.ok[n] = true; cur.flash = 'Page ' + n + ' confirmed (' + kept + ' value' + (kept === 1 ? '' : 's') + ').';
+      var nx = nextAfter(n); if (nx) { w.page = nx; cur.flash += ' Now page ' + nx + '.'; } else { w.stage = 'finish'; }
       paintWalk(); window.scrollTo(0, 0);
     });
     cur.active = -1; showPage(n);
   }
   function paintFinish() {
-    var w = cur.walk, host = document.getElementById('lab-walk-left'), d = cur.meta.date || '';
-    var todo = w.order.filter(function (n) { return !w.ok[n]; });
-    var keep = cur.rows.filter(savable), by = {}, order = [];
-    keep.forEach(function (r) { var pn = r.panel || 'Other'; if (!by[pn]) { by[pn] = []; order.push(pn); } by[pn].push(r); });
+    var w = cur.walk, host = document.getElementById('lab-walk-left'), d = cur.meta.date || '', order = walkOrder();
+    var todo = order.filter(function (n) { return !w.ok[n]; });
+    var keep = cur.rows.filter(savable), by = {}, pord = [];
+    keep.forEach(function (r) { var pn = r.panel || 'Other'; if (!by[pn]) { by[pn] = []; pord.push(pn); } by[pn].push(r); });
     document.getElementById('lab-walk-h').textContent = 'All pages checked';
     document.getElementById('lab-walk-lede').textContent = 'Last step: the date, then save. Only what you confirmed is kept.';
     host.innerHTML = (cur.flash ? '<div class="lab-flash">&#10003; ' + esc(cur.flash) + '</div>' : '') +
       '<div class="lab-meta"><label class="intake-label" for="lab-date">Report date (when the sample was taken)</label><input type="date" id="lab-date" value="' + esc(d) + '" max="' + new Date().toISOString().slice(0, 10) + '">' +
       '<label class="intake-label" for="lab-lab" style="margin-left:14px;">Lab (optional)</label><input type="text" id="lab-lab" maxlength="60" value="' + esc(cur.meta.lab || '') + '" placeholder="e.g. your lab’s name"></div>' +
-      (todo.length ? '<p class="lab-msg">Not confirmed yet: page' + (todo.length > 1 ? 's ' : ' ') + todo.join(', ') + '. Use the page buttons above to check ' + (todo.length > 1 ? 'them' : 'it') + '. Values on pages you have not confirmed are not saved.</p>' : '') +
+      (todo.length ? '<p class="lab-msg">Not confirmed yet: page' + (todo.length > 1 ? 's ' : ' ') + todo.join(', ') + '. Use the page numbers above to check ' + (todo.length > 1 ? 'them' : 'it') + '. Values on pages you have not confirmed are not saved.</p>' : '') +
       '<div class="lab-pagehead">' + keep.length + ' value' + (keep.length === 1 ? '' : 's') + ' to save, by panel</div>' +
-      order.map(function (pn) { return '<div class="lab-panelbox"><div class="lab-panelhead"><strong>' + esc(pn) + '</strong><span class="lab-when">' + by[pn].length + '</span></div><table class="lab-sample"><tbody>' +
+      pord.map(function (pn) { return '<div class="lab-panelbox"><div class="lab-panelhead"><strong>' + esc(pn) + '</strong><span class="lab-when">' + by[pn].length + '</span></div><table class="lab-sample"><tbody>' +
         by[pn].map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.value) + ' ' + esc(r.unit) + '</td><td>' + esc(r.ref) + '</td><td>' + badge(r.status) + '</td></tr>'; }).join('') + '</tbody></table></div>'; }).join('') +
-      '<div class="lab-binder-act"><button type="button" class="btn secondary" id="lab-walk-back">&larr; Back to page ' + w.order[w.order.length - 1] + '</button> <button type="button" class="btn" id="lab-save">Save ' + keep.length + ' value' + (keep.length === 1 ? '' : 's') + '</button> <button type="button" class="btn secondary" id="lab-cancel">Cancel</button></div>' +
+      '<div class="lab-binder-act"><button type="button" class="btn secondary" id="lab-walk-back">&larr; Back to page ' + order[order.length - 1] + '</button> <button type="button" class="btn" id="lab-save">Save ' + keep.length + ' value' + (keep.length === 1 ? '' : 's') + '</button> <button type="button" class="btn secondary" id="lab-cancel">Cancel</button></div>' +
       '<p id="lab-save-msg" class="lab-msg" role="status"></p>';
-    document.getElementById('lab-walk-back').addEventListener('click', function () { w.stage = 'page'; w.i = w.order.length - 1; paintWalk(); });
+    document.getElementById('lab-walk-back').addEventListener('click', function () { w.stage = 'page'; w.page = order[order.length - 1]; paintWalk(); });
     document.getElementById('lab-save').addEventListener('click', save);
     document.getElementById('lab-cancel').addEventListener('click', renderList);
-    showPage(w.order[w.order.length - 1]);
+    showPage(order[order.length - 1]);
   }
 
   function paintPages() {
@@ -590,7 +615,7 @@
       var key = r.analyte || '', nm = r.name.trim().slice(0, 80);
       // the same test on the same date replaces the earlier copy
       L.results = L.results.filter(function (x) { return !(x.d === date && (key ? x.k === key : x.n === nm)); });
-      L.results.push({ r: id, p: String(r.panel || '').trim().slice(0, 40), k: key, n: nm, v: String(r.value).trim().slice(0, 30), u: String(r.unit || '').trim().slice(0, 30), f: String(r.ref || '').trim().slice(0, 120), s: r.status || '', b: r.band || '', d: date });
+      L.results.push({ r: id, p: String(r.panel || '').trim().slice(0, 40), m: String(r.method || '').trim().slice(0, 60), k: key, n: nm, v: String(r.value).trim().slice(0, 30), u: String(r.unit || '').trim().slice(0, 30), f: String(r.ref || '').trim().slice(0, 120), s: r.status || '', b: r.band || '', d: date });
     });
     L.reports.push({ id: id, date: date, lab: labName, n: keep.length, t: reportTopics().slice(0, 120) });
     if (cur && cur.file) LabBinder.put(id, cur.file);

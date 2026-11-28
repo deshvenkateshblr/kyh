@@ -63,12 +63,24 @@
     return sc;
   }
   /* For every page: is it a table of results, a written report (ECG, echo, scan) or other text, and which topics does it carry. */
+  var SUMMARY_TITLE = /\b(summary|overview|highlights?|at a glance|key findings|doctor'?s? (note|notes|comments?)|recommendations?|diet plan|disclaimer|table of contents|contents|index|health score|your report|abnormal results)\b/i;
+  /* the biggest text on a page is its title; a page titled "Summary" is not a results table even if it holds a few numbers */
+  function pageTitle(rows) {
+    if (!rows.length) return '';
+    var hs = rows.map(function (r) { return r.h; }).sort(function (a, b) { return a - b; }), med = hs[Math.floor(hs.length / 2)] || 9;
+    var byTop = rows.slice().sort(function (a, b) { return b.y - a.y; });
+    var big = byTop.filter(function (r) { return r.h >= med * 1.25; }).slice(0, 3);
+    if (!big.length) big = byTop.slice(0, 1);
+    return big.map(function (r) { return r.cells.map(function (c) { return c.text; }).join(' '); }).join(' ').replace(/\s+/g, ' ').trim();
+  }
   function classifyPages(pages) {
     return pages.map(function (pg) {
       var text = ' ' + norm(pg.rows.map(function (r) { return r.cells.map(function (c) { return c.text; }).join(' '); }).join(' ')) + ' ';
-      var tab = pageScore(pg.rows), out = { page: pg.page, kind: 'text', topics: [], table: tab };
+      var tab = pageScore(pg.rows), title = pageTitle(pg.rows), out = { page: pg.page, kind: 'text', topics: [], table: tab, title: title };
       var sc = topics().map(function (t) { return { t: t, s: topicScore(t, text) }; });
-      if (tab >= 1) {
+      if (SUMMARY_TITLE.test(title) && title.length < 80) {
+        out.reason = 'Titled \u201c' + title + '\u201d';
+      } else if (tab >= 1) {
         out.kind = 'results';
         sc.filter(function (x) { return x.t.kind === 'values' && x.s >= 3; }).sort(function (a, b) { return b.s - a.s; }).forEach(function (x) { out.topics.push(x.t.name); });
       } else {
@@ -118,7 +130,7 @@
   function headerCols(row) {
     var hits = row.cells.filter(function (c) { return HEADER_WORDS.test(c.text) && c.text.length < 40 && !/\d/.test(c.text); });
     if (hits.length < 3 || row.cells.length > 9) return null;
-    var cols = { name: null, value: null, unit: null, ref: null, flag: null };
+    var cols = { name: null, value: null, unit: null, ref: null, flag: null, method: null };
     row.cells.forEach(function (c, i) {
       var t = c.text.toLowerCase(), cx = (c.x + c.x2) / 2;
       if (/(test|investigation|parameter|analyte)/.test(t) && !cols.name) cols.name = cx;
@@ -126,6 +138,7 @@
       else if (/\bunits?\b/.test(t) && !cols.unit) cols.unit = cx;
       else if (/(reference|range|interval|normal|biological|bio\.?)/.test(t) && !cols.ref) cols.ref = cx;
       else if (/flag/.test(t)) cols.flag = cx;
+      else if (/(method|technique|methodology)/.test(t)) cols.method = cx;
     });
     if (cols.name === null) cols.name = row.cells[0].x;
     if (cols.value === null) return null;
@@ -133,7 +146,7 @@
   }
   function assign(row, cols) {
     var keys = Object.keys(cols).filter(function (k) { return cols[k] !== null; });
-    var out = { name: '', value: '', unit: '', ref: '', flag: '' };
+    var out = { name: '', value: '', unit: '', ref: '', flag: '', method: '' };
     row.cells.forEach(function (c) {
       var cx = (c.x + c.x2) / 2, best = null, bd = 1e9;
       keys.forEach(function (k) { var d = Math.abs(cols[k] - cx); if (k === 'name' && c.x < cols.name + 3) d = Math.min(d, 0); if (d < bd) { bd = d; best = k; } });
@@ -241,6 +254,8 @@
   /* How much a page looks like a table of results: rows that hold a number AND (a unit OR a range). Independent of any lab's layout. */
   var UNIT_CELL = /^(mg\/d?l|g\/d?l|gm\/d?l|gm%|ng\/m?l|pg\/m?l|ug\/d?l|\u00b5g\/d?l|mcg\/d?l|u?iu\/m?l|miu\/l|mu\/l|u\/l|iu\/l|mmol\/l|meq\/l|mm\/hr|mm\/h|fl|pg|%|thou\/cumm|lakh\/cumm|million\/cumm|mill\/cumm|10\^?[0-9]+\/\w+|\/cumm|\/ul|\/hpf|cells\/\w+|sec|seconds|ratio|mg\/l|ml\/min.*|mosm\/kg)$/i;
   var RANGE_IN = /\d\s*(-|\u2013|to)\s*\d|[<>]=?\s*\d|up to\s*\d/i;
+  var METHOD_RE = /^(spectrophotometr|photometr|colorimetr|microscop|dhss|flow cytometr|impedance|electrical impedance|calculated|calculation|immunoturbidimetr|turbidimetr|nephelometr|clia\b|eclia\b|ecl\b|cmia\b|elisa|hplc|enzymatic|glucose oxidase|gop[- ]?pod|hexokinase|jaffe|ise\b|ion selective|potentiometr|ifcc|uricase|cholesterol oxidase|reflectance|dipstick|manual|westergren|automated|capillary electrophoresis|latex|agglutination|chemiluminescen|electrochemiluminescen|fluorescen|rt-?pcr|pcr\b|biuret|bcg\b|bcp\b|diazo|sls\b|lyse|photo ?metric|colou?rimetric|kinetic|end point|endpoint|immunoassay|cloud)/i;
+  function isMethod(t) { t = String(t || '').trim(); return t.length > 2 && t.length <= 60 && METHOD_RE.test(t); }
   function pageScore(rows) {
     var n = 0;
     rows.forEach(function (r) {
@@ -255,16 +270,17 @@
     return n;
   }
   function pickPages(pages) {
-    var sc = pages.map(function (p) { return pageScore(p.rows); }), sel = [];
-    pages.forEach(function (p, i) { if (sc[i] >= 1) sel.push(p.page); });
-    if (!sel.length) pages.forEach(function (p) { sel.push(p.page); });
+    var sc = pages.map(function (p) { return pageScore(p.rows); }), cls = classifyPages(pages), sel = [];
+    cls.forEach(function (c) { if (c.kind === 'results') sel.push(c.page); });
+    if (!sel.length) pages.forEach(function (p, i) { if (sc[i] >= 1 && !(cls[i].reason)) sel.push(p.page); });
     return { scores: sc, sel: sel };
   }
+
   /* Guess where the columns are. Looks at rows that hold a result, then a unit or a range, and takes the typical x position of each role.
      Uses the header row too when there is one. Returns { cols, how, anchors } or null. */
   function med(a) { a = a.slice().sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : null; }
   function guessCols(pages, only) {
-    var nm = [], vl = [], un = [], rf = [], fl = [], n = 0, hdr = null;
+    var nm = [], vl = [], un = [], rf = [], fl = [], me = [], n = 0, hdr = null;
     pages.forEach(function (pg) {
       if (only && only.indexOf(pg.page) < 0) return;
       pg.rows.forEach(function (r) {
@@ -278,12 +294,13 @@
         if (c[k] && (RANGE_IN.test(c[k].text) || QUAL.test(c[k].text.trim()))) ref = c[k];
         if (!unit && !ref) return;
         n++; nm.push(c[0].x); vl.push((c[vi].x + c[vi].x2) / 2);
+        c.forEach(function (x, xi) { if (xi > vi && isMethod(x.text)) me.push((x.x + x.x2) / 2); });
         if (unit) un.push((unit.x + unit.x2) / 2); if (ref) rf.push((ref.x + ref.x2) / 2); if (flag) fl.push((flag.x + flag.x2) / 2);
       });
     });
     if (!hdr && n < 2) return null;
-    var cols = { name: med(nm), value: med(vl), unit: un.length >= Math.max(2, n * 0.4) ? med(un) : null, ref: rf.length >= Math.max(2, n * 0.4) ? med(rf) : null, flag: fl.length >= Math.max(2, n * 0.2) ? med(fl) : null };
-    if (hdr) { ['name', 'value', 'unit', 'ref', 'flag'].forEach(function (k) { if (hdr[k] !== null && hdr[k] !== undefined) cols[k] = hdr[k]; }); }
+    var cols = { name: med(nm), value: med(vl), unit: un.length >= Math.max(2, n * 0.4) ? med(un) : null, ref: rf.length >= Math.max(2, n * 0.4) ? med(rf) : null, flag: fl.length >= Math.max(2, n * 0.2) ? med(fl) : null, method: me.length >= Math.max(2, n * 0.3) ? med(me) : null };
+    if (hdr) { ['name', 'value', 'unit', 'ref', 'flag', 'method'].forEach(function (k) { if (hdr[k] !== null && hdr[k] !== undefined) cols[k] = hdr[k]; }); }
     if (cols.value === null || cols.name === null) return null;
     return { cols: cols, how: hdr ? 'header' : 'numbers', anchors: n };
   }
@@ -310,6 +327,8 @@
         if (!okVal) {
           // continuation of the previous test (wrapped name, or a reference range on its own line)
           if (last && Math.abs(last.y - r.y) < r.h * 3.2) {
+            if (/^method\s*:/i.test(line)) { last.method = line.replace(/^method\s*:?\s*/i, '').slice(0, 60); return; }
+            if (r.cells.length === 1 && isMethod(line) && !last.method) { last.method = line.slice(0, 60); return; }
             if (r.cells.length === 1 && /^\(.*\)$/.test(line)) { last.name += ' ' + line; last.analyte = (matchAnalyte(last.name) || {}).key || last.analyte; return; }
             if (/^(male|female|m\s*[:\-]|f\s*[:\-]|[<>]=?|\d+(\.\d+)?\s*(-|\u2013|to)\s*\d|up to|desirable|optimal|borderline|normal|high|low|deficien|insufficien|sufficien|\d+(\.\d+)?\s*[-:]?\s*(normal|desirable|optimal|borderline|high|low))/i.test(line) && r.cells.length <= 3) { last.ref = (last.ref + ' ' + line).trim(); last.y = r.y; return; }
           }
@@ -319,10 +338,11 @@
         var name = (parts.name || '').replace(/\s+/g, ' ').trim();
         if (name.length < 2 || !/[A-Za-z]{2}/.test(name) || SKIP_NAME.test(name) || /^\d/.test(name)) return;
         var a = matchAnalyte(name);
-        var unit = (parts.unit || '').trim(), ref = (parts.ref || '').trim();
+        var unit = (parts.unit || '').trim(), ref = (parts.ref || '').trim(), method = (parts.method || '').trim();
+        if (!method) r.cells.forEach(function (c, ci) { if (ci > 0 && !method && isMethod(c.text) && c.text !== name) { method = c.text; ref = ref.replace(c.text, '').trim(); } });
         if (!a && !ref && !unit) return;            // address lines, ids and other noise
         var first = r.cells[0], box = { x1: Math.min.apply(null, r.cells.map(function (c) { return c.x; })), x2: Math.max.apply(null, r.cells.map(function (c) { return c.x2; })), y1: r.y - 2, y2: r.y + r.h };
-        var t = { page: pg.page, y: r.y, category: cat, name: name, analyte: a ? a.key : '', value: (parts.value || '').trim(), unit: unit || (a ? a.unit : ''), ref: ref, flag: (parts.flag || '').trim(), box: box };
+        var t = { page: pg.page, y: r.y, category: cat, name: name, analyte: a ? a.key : '', value: (parts.value || '').trim(), unit: unit || (a ? a.unit : ''), ref: ref, flag: (parts.flag || '').trim(), method: method.slice(0, 60), box: box };
         tests.push(t); last = t;
       });
     });
