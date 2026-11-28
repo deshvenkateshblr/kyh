@@ -39,9 +39,9 @@
   function csv(reports, results) {
     var byR = {}; reports.forEach(function (r) { byR[r.id] = r; });
     var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-    var lines = ['date,lab,test,value,unit,printed range,status'];
+    var lines = ['date,lab,panel,test,value,unit,printed range,status'];
     results.slice().sort(function (a, b) { return (a.d || '').localeCompare(b.d || '') || (a.n || '').localeCompare(b.n || ''); }).forEach(function (x) {
-      var r = byR[x.r] || {}; lines.push([x.d, r.lab, x.n, x.v, x.u, x.f, x.s].map(q).join(','));
+      var r = byR[x.r] || {}; lines.push([x.d, r.lab, x.p, x.n, x.v, x.u, x.f, x.s].map(q).join(','));
     });
     return lines.join('\n');
   }

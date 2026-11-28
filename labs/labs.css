@@ -131,3 +131,21 @@ input, select, textarea, button { font-family: inherit; }
 #lab-wrap[data-kind="text"] canvas { opacity: .38; }
 #lab-wrap[data-kind="text"]::after { content: "Summary, skipped"; position: absolute; top: 16px; right: 18px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; background: #8a5a12; color: #fff; padding: 4px 9px; }
 .lab-pagelist li.cur { background: var(--teal-soft); box-shadow: -4px 0 0 var(--teal); padding-left: 6px; }
+
+.lab-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; align-items: center; }
+.lab-step, .lab-step-end { font: 600 12px var(--mono); padding: 8px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+.lab-step-end { cursor: default; border-style: dashed; }
+.lab-step.done { color: var(--teal); border-color: var(--teal); background: var(--teal-soft); }
+.lab-step.cur, .lab-step-end.cur { background: var(--ink); color: #fff; border-color: var(--ink); }
+.lab-walk-sum { font-size: 14px; margin: 0 0 12px; }
+.lab-issue-count { color: #8a5a12; font-weight: 600; }
+.lab-panelbox { border: 1px solid var(--line); background: #f7f9f5; margin: 0 0 14px; padding: 8px; }
+.lab-panelhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 8px; }
+.lab-panel-in { font: 600 14px var(--sans); padding: 6px 8px; border: 1px solid var(--teal); background: #fff; flex: 1 1 180px; min-width: 0; }
+.lab-fields .intake-label { display: block; margin: 6px 0 3px; font-size: 10px; }
+.lab-attr { display: flex; flex-direction: column; gap: 2px; font-size: 12px; margin: 3px 0 2px; }
+.lab-known { color: var(--teal); }
+.lab-unknown { color: #8a5a12; font-weight: 600; }
+.lab-issue { color: #8a5a12; background: #fbf1dc; padding: 2px 6px; border-left: 3px solid #d9a441; }
+.lab-sexask { background: #fbf1dc; border: 1px solid #d9a441; padding: 8px 10px; margin: 0 0 12px; font-size: 13.5px; }
+.lab-sexask .lab-segbtn { flex: none; padding: 6px 14px; margin: 0 4px; }

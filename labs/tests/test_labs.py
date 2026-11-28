@@ -22,28 +22,39 @@ def newpage(b, **kw):
     pg.on('pageerror', lambda e: pg.errs.append(str(e))); pg.on('dialog', lambda d: d.accept()); pg.on('request', lambda r: pg.reqs.append(r.url))
     pg.goto(BASE + 'index.html'); pg.wait_for_selector('#lab-file', state='attached')
     return pg
-def load(pg, name, go=True):
+ROWJS = "sel => [...document.querySelectorAll(sel + ' .lab-row')].map(r => '|' + [...r.querySelectorAll('input[data-f]')].map(i => i.value).join('|'))"
+def load(pg, name, go=True, finish=True):
+    """open a report; go=False stops on the guess screen; finish=False stops on the first results page; otherwise confirms every page"""
     pg.goto(BASE + 'index.html'); pg.wait_for_selector('#lab-file', state='attached')
     pg.set_input_files('#lab-file', os.path.join(FX, name))
     pg.wait_for_selector('#lab-go, #lab-save', timeout=20000)
-    if go and pg.locator('#lab-go').count():
-        pg.click('#lab-go')
-    if go: pg.wait_for_selector('#lab-save', timeout=20000); pg.wait_for_timeout(500)
-    else: pg.wait_for_timeout(500)
-def rows(pg):
-    return pg.evaluate("() => [...document.querySelectorAll('#lab-rows .lab-row')].map(r => [...r.querySelectorAll('input[data-f]')].map(i => i.value).join('|'))")
+    pg.wait_for_timeout(400)
+    if not go: return []
+    got = []
+    if pg.locator('#lab-go').count():
+        pg.click('#lab-go'); pg.wait_for_selector('#lab-walk-ok', timeout=20000); pg.wait_for_timeout(500)
+        if not finish: return []
+        while pg.locator('#lab-walk-ok').count():
+            got += pg.evaluate(ROWJS, '#lab-walk-left'); pg.click('#lab-walk-ok'); pg.wait_for_timeout(450)
+        pg.wait_for_selector('#lab-save'); return got
+    pg.wait_for_selector('#lab-save', timeout=20000); pg.wait_for_timeout(300)
+    return pg.evaluate(ROWJS, '#lab-rows')
+def confirm_all(pg):
+    while pg.locator('#lab-walk-ok').count():
+        pg.click('#lab-walk-ok'); pg.wait_for_timeout(450)
+    pg.wait_for_selector('#lab-save')
 
 with sync_playwright() as p:
     b = p.chromium.launch()
     pg = newpage(b)
     print('Reading')
-    load(pg, 'style_a_table.pdf'); ra = rows(pg)
+    ra = load(pg, 'style_a_table.pdf')
     check(len(ra) >= 12, 'style A: rows extracted', str(len(ra)))
     check(pg.input_value('#lab-date') == '2026-03-12', 'style A: date read')
     check(any('|HbA1c|' in r for r in ra), 'style A: HbA1c present')
-    load(pg, 'style_b_flags.pdf'); check(len(rows(pg)) >= 6, 'style B: rows extracted')
-    load(pg, 'style_c_plain.pdf'); check(len(rows(pg)) >= 6 and pg.input_value('#lab-date') == '2026-03-05', 'style C: rows from both pages and date')
-    load(pg, 'style_d_scan.pdf'); check(len(rows(pg)) == 0 and 'no readable text' in pg.inner_text('main'), 'style D: scan says no readable text')
+    check(len(load(pg, 'style_b_flags.pdf')) >= 6, 'style B: rows extracted')
+    rc = load(pg, 'style_c_plain.pdf'); check(len(rc) >= 6 and pg.input_value('#lab-date') == '2026-03-05', 'style C: rows from both pages and date')
+    rd = load(pg, 'style_d_scan.pdf'); check(len(rd) == 0 and 'no readable text' in pg.inner_text('main'), 'style D: scan says no readable text')
 
     print('Guess screen')
     load(pg, 'style_e_summary_first.pdf', go=False)
@@ -77,21 +88,35 @@ with sync_playwright() as p:
     pg.click('[data-showpg="4"]'); pg.wait_for_timeout(300)
     pg.click('[data-role="unit"]'); bx = pg.locator('#lab-canvas').bounding_box(); pg.mouse.click(bx['x'] + bx['width'] * 0.8, bx['y'] + 200); pg.wait_for_timeout(400)
     check('as you set it' in pg.inner_text('#lab-guess'), 'tapping the page sets a column')
-    load(pg, 'style_e_summary_first.pdf')
-    chips = pg.evaluate("() => [...document.querySelectorAll('.lab-chip')].map(c => c.classList.contains('on'))")
-    check(chips == [False, False, False, True, True] and len(rows(pg)) >= 12, 'summary pages skipped, results found', str(chips))
     pg.click('#lab-dumpbtn'); pg.wait_for_timeout(300)
     check(pg.evaluate("() => document.getElementById('lab-dump').value").startswith('Layout'), 'layout dump available')
+    re_ = load(pg, 'style_e_summary_first.pdf', finish=False)
+    check(pg.locator('[data-step]').count() == 2, 'the walk has one step per results page (summary pages left out)')
+    re_ = load(pg, 'style_e_summary_first.pdf')
+    check(len(re_) >= 12, 'summary-first report: all results found across the pages', str(len(re_)))
     pg.context.close()
 
     print('Review, save, keep')
     pg = newpage(b)
-    load(pg, 'style_a_table.pdf')
-    pg.click('#lab-rows .lab-row >> nth=2'); pg.wait_for_timeout(400)
+    load(pg, 'style_a_table.pdf', finish=False)
+    check('Check page' in pg.inner_text('#lab-walk-h') and '1 of' in pg.inner_text('#lab-walk-h'), 'walk starts on the first results page')
+    check(pg.locator('.lab-panelbox').count() >= 1 and pg.locator('.lab-panel-in').first.input_value() != '', 'each group shows its panel')
+    check('Known test' in pg.inner_text('.lab-attr >> nth=0'), 'each test says whether it is a known test')
+    check(pg.locator('[data-sex]').count() == 2, 'sex-dependent ranges ask which sex the report is for')
+    pg.click('[data-sex="Male"]'); pg.wait_for_timeout(400)
+    check(pg.locator('[data-sex]').count() == 0 and 'LOW' in pg.inner_text('.lab-row >> nth=0 >> [data-st]').upper(), 'choosing a sex judges the range (12.1 is low for a male)')
+    pg.click('.lab-row >> nth=2'); pg.wait_for_timeout(400)
     check(pg.evaluate("() => { const h = document.getElementById('lab-hl'); return !!h && h.offsetWidth > 0; }"), 'row click highlights the page')
-    pg.fill('#lab-rows .lab-row >> nth=0 >> input[data-f=value]', '14.0')
-    check('range' in pg.inner_text('#lab-rows .lab-row >> nth=0 >> [data-st]').lower(), 'editing a value recomputes status')
+    pg.fill('.lab-row >> nth=0 >> input[data-f=value]', '14.0')
+    check('range' in pg.inner_text('.lab-row >> nth=0 >> [data-st]').lower(), 'editing a value recomputes status')
+    pg.fill('.lab-panel-in >> nth=0', 'My test panel'); pg.press('.lab-panel-in >> nth=0', 'Tab'); pg.wait_for_timeout(300)
+    check(pg.locator('.lab-panel-in').first.input_value() == 'My test panel', 'a panel can be renamed')
+    pg.click('#lab-walk-ok'); pg.wait_for_timeout(500)
+    check('confirmed' in pg.inner_text('#lab-walk-left') or pg.locator('#lab-save').count() == 1, 'confirming a page shows a message and moves on')
+    confirm_all(pg)
+    check('All pages checked' in pg.inner_text('#lab-walk-h') and 'My test panel' in pg.inner_text('#lab-walk-left'), 'the final step lists everything by panel')
     pg.click('#lab-save'); pg.wait_for_timeout(600)
+    check('My test panel' in pg.inner_text('main'), 'the saved list is grouped by the panel you set')
     check(pg.locator('.lab-reports li').count() == 1 and 'worth raising' in pg.inner_text('main').lower(), 'saved: report listed and flagged values shown')
     pg.reload(); pg.wait_for_selector('.lab-reports li', timeout=8000)
     check(pg.locator('.lab-reports li').count() == 1 and pg.locator('[data-view]').count() == 1, 'still there after reload (kept in the browser, with its file)')
@@ -111,7 +136,9 @@ with sync_playwright() as p:
     p2.goto(BASE + 'index.html')
     for f in ('style_a_table.pdf', 'style_c_plain.pdf'):
         p2.wait_for_selector('#lab-file', state='attached'); p2.set_input_files('#lab-file', os.path.join(FX, f))
-        p2.wait_for_selector('#lab-go'); p2.click('#lab-go'); p2.wait_for_selector('#lab-save'); p2.wait_for_timeout(400); p2.click('#lab-save'); p2.wait_for_timeout(600)
+        p2.wait_for_selector('#lab-go'); p2.click('#lab-go'); p2.wait_for_selector('#lab-walk-ok')
+        while p2.locator('#lab-walk-ok').count(): p2.click('#lab-walk-ok'); p2.wait_for_timeout(450)
+        p2.wait_for_selector('#lab-save'); p2.click('#lab-save'); p2.wait_for_timeout(600)
     check(p2.locator('.lab-reports li').count() == 2, 'lists both reports')
     p2.fill('#lab-ff', '2026-03-10'); p2.wait_for_timeout(500)
     check(p2.locator('.lab-reports li').count() == 1, 'filter by from-date')
