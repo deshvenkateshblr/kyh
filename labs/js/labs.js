@@ -215,11 +215,8 @@
       '<div class="lab-pagehead">The first rows, read this way</div><div id="lab-sample"></div>' +
       '<div class="lab-binder-act"><button type="button" class="btn" id="lab-go">Yes, read the whole report this way</button> <button type="button" class="btn secondary" id="lab-cancel">Cancel</button></div>' +
       '<p id="lab-save-msg" class="lab-msg" role="status"></p></div>' +
-      '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><div id="lab-bands"></div></div></div></div>';
+      '<div class="lab-right"><div class="lab-viewer-bar" id="lab-viewer-bar"></div><div id="lab-thispage" class="lab-thispage" role="status" aria-live="polite"></div><div class="lab-canvas-wrap" id="lab-wrap"><canvas id="lab-canvas"></canvas><div id="lab-bands"></div></div></div></div>';
     paintGuess(); paintPages(); paintViewerBar();
-    var vb = document.getElementById('lab-viewer-bar');
-    vb.insertAdjacentHTML('beforeend', ' <button type="button" class="btn secondary" id="lab-mark-sum">This page is a summary</button>');
-    document.getElementById('lab-mark-sum').addEventListener('click', function () { setKind(cur.page, 'text'); document.getElementById('lab-msg-sum') && 0; var m = document.getElementById('lab-save-msg'); m.textContent = 'Page ' + cur.page + ' marked as a summary and skipped. Change it in the page list if that was a mistake.'; });
     showPage(cur.sel[0] || 1);
     document.getElementById('lab-cancel').addEventListener('click', renderList);
     document.getElementById('lab-go').addEventListener('click', function () { cur.mode = 'review'; openReview(cur); });
@@ -242,7 +239,32 @@
     if (kind !== 'findings' && c.topics.length === 1 && c.topics[0] === 'Written report') c.topics = [];
     var manual = cur.rows.filter(function (r) { return !r.box; });
     cur.rows = toRows(LabParse.extract(cur.pages, sex, cur.sel, cur.cols).tests).concat(manual);
-    paintPages(); paintGuess(); drawBands();
+    paintPages(); paintGuess(); paintThisPage(); drawBands();
+  }
+  var KIND_PILL = { results: 'Results table', text: 'Summary or cover (skipped)', findings: 'Written report' };
+  function paintThisPage() {
+    var host = document.getElementById('lab-thispage'); if (!host || !cur.cls) return;
+    var c = cur.cls.filter(function (x) { return x.page === cur.page; })[0]; if (!c) return;
+    var nRows = cur.rows.filter(function (r) { return r.page === c.page; }).length, why;
+    if (c.kind === 'results') why = (c.topics.length ? 'Looks like <strong>' + esc(c.topics.join(', ')) + '</strong>. ' : 'A table of results, but we could not name the panel. ') + 'Reading <strong>' + nRows + '</strong> result' + (nRows === 1 ? '' : 's') + ' from this page.';
+    else if (c.kind === 'findings') why = 'Looks like <strong>' + esc(c.topics[0] || 'a written report') + '</strong>. It is words, not a table of numbers, so no values are read from it.';
+    else why = c.user ? 'You marked this page as a summary or cover. Nothing is read from it.' : 'No table of results found here (' + c.table + ' line' + (c.table === 1 ? '' : 's') + ' with a number and a unit or range). Looks like summary or cover text, so it is skipped.';
+    host.className = 'lab-thispage lab-tp-' + c.kind;
+    host.innerHTML = (cur.flash ? '<div class="lab-flash">&#10003; ' + esc(cur.flash) + '</div>' : '') +
+      '<div class="lab-tp-head"><strong>Page ' + c.page + ' of ' + cur.pages.length + '</strong><span class="lab-pill lab-pill-' + c.kind + '">' + KIND_PILL[c.kind] + (c.user ? ' &middot; set by you' : '') + '</span></div>' +
+      '<p class="lab-tp-why">' + why + '</p>' +
+      '<div class="lab-seg" role="group" aria-label="What is this page">' + [['results', 'Results table'], ['text', 'Summary, skip'], ['findings', 'Written report']].map(function (k) {
+        return '<button type="button" class="lab-segbtn' + (c.kind === k[0] ? ' on' : '') + '" data-mark="' + k[0] + '" aria-pressed="' + (c.kind === k[0]) + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+      '<p class="lab-fine">Pick what this page is and the next page opens.</p>';
+    var w = document.getElementById('lab-wrap'); if (w) w.setAttribute('data-kind', c.kind);
+    host.querySelectorAll('[data-mark]').forEach(function (b) { b.addEventListener('click', function () { markPage(b.getAttribute('data-mark')); }); });
+    if (cur.flash) { var f = cur.flash; setTimeout(function () { if (cur && cur.flash === f) { cur.flash = ''; var el = document.querySelector('#lab-thispage .lab-flash'); if (el) el.remove(); } }, 4000); }
+  }
+  function markPage(kind) {
+    var n = cur.page, last = n >= cur.pdf.numPages, words = { results: 'set as a results table, it will be read', text: 'marked as a summary and skipped', findings: 'marked as a written report' };
+    setKind(n, kind);
+    cur.flash = 'Page ' + n + ' ' + words[kind] + (last ? '.' : '. Now showing page ' + (n + 1) + '.');
+    if (last) paintThisPage(); else showPage(n + 1);
   }
   function saveNote() {
     var d = document.getElementById('lab-note-date').value, m = document.getElementById('lab-save-msg');
@@ -269,7 +291,7 @@
       '<li><strong>Each result row reads:</strong> ' + (cn.length ? esc(cn.join('  →  ')) : 'we could not find the columns, tap them below') + (cur.how === 'header' ? ' <span class="lab-when">(from the column headings)</span>' : cur.how === 'numbers' ? ' <span class="lab-when">(from where the numbers sit)</span>' : cur.how === 'you' ? ' <span class="lab-when">(as you set it)</span>' : '') + '</li>' +
       '<li><strong>Found so far:</strong> ' + cur.rows.length + ' result' + (cur.rows.length === 1 ? '' : 's') + (cur.rows.length ? ' (' + esc(foundByTopic()) + ')' : '') + '</li>' +
       '<li><strong>What each page is:</strong><ul class="lab-pagelist">' + (cur.cls || []).map(function (c) {
-        return '<li><button type="button" class="refine-back" data-showpg="' + c.page + '">Page ' + c.page + '</button>: ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + (c.user ? ' <span class="lab-when">(you set this)</span>' : '') +
+        return '<li class="' + (c.page === cur.page ? 'cur' : '') + '"><button type="button" class="refine-back" data-showpg="' + c.page + '">Page ' + c.page + '</button>: ' + KIND_LABEL[c.kind] + (c.topics.length ? ', looks like <strong>' + esc(c.topics.join(', ')) + '</strong>' : '') + (c.user ? ' <span class="lab-when">(you set this)</span>' : '') +
           '<select class="lab-kind" data-kind="' + c.page + '" aria-label="What is page ' + c.page + '"><option value="results"' + (c.kind === 'results' ? ' selected' : '') + '>Results table</option><option value="text"' + (c.kind === 'text' ? ' selected' : '') + '>Summary or cover, skip it</option><option value="findings"' + (c.kind === 'findings' ? ' selected' : '') + '>Written report</option></select></li>'; }).join('') + '</ul></li>';
     g.querySelectorAll('[data-kind]').forEach(function (sel) { sel.addEventListener('change', function () { setKind(+sel.getAttribute('data-kind'), sel.value); }); });
     g.querySelectorAll('[data-showpg]').forEach(function (b) { b.addEventListener('click', function () { showPage(+b.getAttribute('data-showpg')); }); });
@@ -293,6 +315,7 @@
     var host = document.getElementById('lab-bands'); if (!host) return;
     host.innerHTML = '';
     if (cur.mode !== 'guess' || !cur.vp || !cur.cols) return;
+    var pc = (cur.cls || []).filter(function (x) { return x.page === cur.page; })[0]; if (pc && pc.kind !== 'results') return;
     var vp = cur.vp, h = vp.viewBox[3];
     ROLES.forEach(function (x) {
       var cx = cur.cols[x[0]]; if (cx === null || cx === undefined) return;
@@ -407,6 +430,7 @@
   function showPage(n, box) {
     if (!cur.pdf || n < 1 || n > cur.pdf.numPages) return;
     cur.page = n; document.getElementById('lab-pg').textContent = n;
+    if (cur.mode === 'guess') { paintGuess(); paintThisPage(); }
     cur.pdf.getPage(n).then(function (pg) {
       var dpr = window.devicePixelRatio || 1, wrap = document.getElementById('lab-wrap'), w1 = pg.getViewport({ scale: 1 }).width, fit = Math.max(0.5, Math.min(3, ((wrap ? wrap.clientWidth : 600) - 18) / w1)), vp = pg.getViewport({ scale: fit * cur.scale });
       var cv = document.getElementById('lab-canvas'); cv.width = Math.floor(vp.width * dpr); cv.height = Math.floor(vp.height * dpr);

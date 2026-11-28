@@ -114,3 +114,20 @@ input, select, textarea, button { font-family: inherit; }
 .lab-pagelist li { border: 0; padding: 0; }
 .lab-kind { display: block; margin: 3px 0 6px; font: 12.5px inherit; font-family: inherit; padding: 4px 6px; border: 1px solid var(--line); background: var(--panel); max-width: 100%; }
 .lab-pagelist li { margin-bottom: 4px; }
+
+.lab-thispage { border: 1px solid var(--line); border-left: 4px solid var(--teal); background: var(--panel); padding: 10px 12px; margin: 0 0 8px; }
+.lab-thispage.lab-tp-text { border-left-color: #b58a3a; background: #fbf5e6; }
+.lab-thispage.lab-tp-findings { border-left-color: #5a6ec8; }
+.lab-tp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.lab-tp-why { margin: 6px 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
+.lab-pill { font: 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid currentColor; }
+.lab-pill-results { color: var(--teal); } .lab-pill-text { color: #8a5a12; } .lab-pill-findings { color: #3f52a8; }
+.lab-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-segbtn { flex: 1 1 110px; font: 600 13px var(--sans); padding: 9px 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); cursor: pointer; }
+.lab-segbtn.on { background: var(--teal); border-color: var(--teal); color: #fff; }
+.lab-thispage.lab-tp-text .lab-segbtn.on { background: #8a5a12; border-color: #8a5a12; }
+.lab-thispage.lab-tp-findings .lab-segbtn.on { background: #3f52a8; border-color: #3f52a8; }
+.lab-flash { background: var(--teal-soft); color: var(--teal); font-weight: 600; font-size: 13.5px; padding: 6px 10px; margin: -2px -4px 8px; border: 1px solid var(--teal); }
+#lab-wrap[data-kind="text"] canvas { opacity: .38; }
+#lab-wrap[data-kind="text"]::after { content: "Summary, skipped"; position: absolute; top: 16px; right: 18px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; background: #8a5a12; color: #fff; padding: 4px 9px; }
+.lab-pagelist li.cur { background: var(--teal-soft); box-shadow: -4px 0 0 var(--teal); padding-left: 6px; }
